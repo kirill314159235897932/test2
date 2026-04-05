@@ -1,3 +1,5 @@
+const API_BASE_URL = 'https://rpg-backend-uch9.onrender.com';
+
 let sessionId = null;
 let player = null;
 let currentLocation = "Стена Мария";
@@ -40,7 +42,7 @@ function renderLocationButtons() {
         "Стена Роза": ["Стена Мария", "Стена Сина", "Тренировочная площадка", "Госпиталь", "Лаборатория", "stats"],
         "Стена Сина": ["Стена Роза", "Королевский дворец", "Рынок Сины", "Храм воинов", "Госпиталь", "stats"],
         "За стеной": ["hunt", "explore", "Броня Титана", "Колоссальный титан", "Дракон", "Назад"],
-        "Казармы": ["Взять задание", "train_odm", "train_normal", "buy_odm", "buy_gas", "buy_blades", "Назад"],
+        "Казармы": ["train_odm", "train_normal", "buy_odm", "buy_gas", "buy_blades", "Назад"],
         "Тренировочная площадка": ["train_odm", "train_normal", "Назад"],
         "Торговый район": ["Магазин оружия", "Аптека", "Магазин ODM", "Назад"],
         "Магазин оружия": ["buy_sword", "buy_shield", "Назад"],
@@ -49,52 +51,29 @@ function renderLocationButtons() {
         "Центральная площадь": ["rest", "daily", "Назад"],
         "Госпиталь": ["heal", "Назад"],
         "Лаборатория": ["Сдать трофеи", "Назад"],
-        "Королевский дворец": ["Получить награду за титанов", "Назад"],
+        "Королевский дворец": ["Получить награду", "Назад"],
         "Рынок Сины": ["Продать травы", "Назад"],
-        "Храм воинов": ["Получить благословение (50g)", "Назад"],
+        "Храм воинов": ["Благословение", "Назад"],
         "Дом Аккерманов": ["talk_mikasa", "mikasa_status", "summon_mikasa", "Назад"]
     };
     
     const actionNames = {
-        "stats": "📊 Характеристики",
-        "inventory": "🎒 Инвентарь",
-        "hunt": "🎯 Охота на титанов",
-        "explore": "🔍 Исследовать лес",
-        "train_odm": "🎯 Тренировка с ODM",
-        "train_normal": "💪 Без ODM",
-        "buy_odm": "🛡️ Купить ODM (100g)",
-        "buy_gas": "⛽ Купить газ (20g)",
-        "buy_blades": "🔪 Купить лезвия (10g)",
-        "buy_sword": "🗡️ Купить меч (50g)",
-        "buy_shield": "🛡️ Купить щит (30g)",
-        "buy_potion": "🧪 Зелье здоровья (20g)",
-        "rest": "😴 Отдохнуть",
-        "daily": "🎁 Ежедневная награда",
-        "heal": "🏥 Лечиться (10g)",
-        "talk_mikasa": "💬 Поговорить с Микасой",
-        "mikasa_status": "📊 Статус Микасы",
-        "summon_mikasa": "👥 Призвать Микасу",
-        "Назад": "⬅️ Назад",
-        "Стена Мария": "🏛️ Стена Мария",
-        "Стена Роза": "🏛️ Стена Роза",
-        "Стена Сина": "🏛️ Стена Сина",
-        "За стеной": "🌲 За стену",
-        "Казармы": "⚔️ Казармы",
-        "Торговый район": "🛒 Торговый район",
-        "Центральная площадь": "🏙️ Центральная площадь",
-        "Тренировочная площадка": "🎯 Тренировочная площадка",
-        "Госпиталь": "🏥 Госпиталь",
-        "Лаборатория": "🔬 Лаборатория",
-        "Королевский дворец": "👑 Королевский дворец",
-        "Рынок Сины": "💰 Рынок Сины",
-        "Храм воинов": "🛐 Храм воинов",
-        "Магазин оружия": "⚔️ Магазин оружия",
-        "Аптека": "❤️ Аптека",
-        "Магазин ODM": "⚡ Магазин ODM",
-        "Дом Аккерманов": "🏠 Дом Аккерманов",
-        "Броня Титана": "🛡️ Броня Титана (ур.10+)",
-        "Колоссальный титан": "🔥 Колоссальный титан (ур.20+)",
-        "Дракон": "🐉 Дракон (ур.30+)"
+        "stats": "📊 Характеристики", "inventory": "🎒 Инвентарь", "hunt": "🎯 Охота на титанов",
+        "explore": "🔍 Исследовать лес", "train_odm": "🎯 Тренировка с ODM", "train_normal": "💪 Без ODM",
+        "buy_odm": "🛡️ Купить ODM (100g)", "buy_gas": "⛽ Купить газ (20g)", "buy_blades": "🔪 Купить лезвия (10g)",
+        "buy_sword": "🗡️ Купить меч (50g)", "buy_shield": "🛡️ Купить щит (30g)", "buy_potion": "🧪 Зелье здоровья (20g)",
+        "rest": "😴 Отдохнуть", "daily": "🎁 Ежедневная награда", "heal": "🏥 Лечиться (10g)",
+        "talk_mikasa": "💬 Поговорить с Микасой", "mikasa_status": "📊 Статус Микасы", "summon_mikasa": "👥 Призвать Микасу",
+        "Назад": "⬅️ Назад", "Стена Мария": "🏛️ Стена Мария", "Стена Роза": "🏛️ Стена Роза",
+        "Стена Сина": "🏛️ Стена Сина", "За стеной": "🌲 За стену", "Казармы": "⚔️ Казармы",
+        "Торговый район": "🛒 Торговый район", "Центральная площадь": "🏙️ Центральная площадь",
+        "Тренировочная площадка": "🎯 Тренировочная площадка", "Госпиталь": "🏥 Госпиталь",
+        "Лаборатория": "🔬 Лаборатория", "Королевский дворец": "👑 Королевский дворец",
+        "Рынок Сины": "💰 Рынок Сины", "Храм воинов": "🛐 Храм воинов", "Магазин оружия": "⚔️ Магазин оружия",
+        "Аптека": "❤️ Аптека", "Магазин ODM": "⚡ Магазин ODM", "Дом Аккерманов": "🏠 Дом Аккерманов",
+        "Броня Титана": "🛡️ Броня Титана (10+)", "Колоссальный титан": "🔥 Колоссальный титан (20+)",
+        "Дракон": "🐉 Дракон (30+)", "Получить награду": "🏆 Получить награду", "Продать травы": "🌿 Продать травы",
+        "Благословение": "🙏 Благословение (50g)", "Сдать трофеи": "🎖️ Сдать трофеи"
     };
     
     const acts = buttonsMap[currentLocation] || ["Стена Мария", "stats"];
@@ -118,7 +97,6 @@ function renderLocationButtons() {
 function renderBattleButtons() {
     const grid = document.createElement('div');
     grid.className = 'button-grid';
-    
     const actions = ["battle_attack", "battle_heal", "battle_flee"];
     const names = {"battle_attack": "⚔️ Атаковать", "battle_heal": "❤️ Использовать зелье", "battle_flee": "🏃 Сбежать"};
     
@@ -129,159 +107,97 @@ function renderBattleButtons() {
         btn.onclick = () => sendAction(action);
         grid.appendChild(btn);
     });
-    
     buttonsPanel.innerHTML = '';
     buttonsPanel.appendChild(grid);
 }
 
 async function sendAction(action) {
     try {
-        const response = await fetch('/api/action', {
+        const response = await fetch(`${API_BASE_URL}/api/action`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ session_id: sessionId, action: action, battle_id: currentBattleId })
         });
         const data = await response.json();
         
-        if (data.error) {
-            addMessage(`❌ ${data.error}`, 'error');
-            return;
-        }
-        
-        // Навигация
+        if (data.error) { addMessage(`❌ ${data.error}`, 'error'); return; }
         if (data.location) {
             currentLocation = data.location;
             addMessage(`📍 ${data.description || data.location}`, 'system');
             if (data.player) player = data.player;
-            updateStats();
-            renderLocationButtons();
-            return;
+            updateStats(); renderLocationButtons(); return;
         }
-        
-        // Начало битвы
         if (data.battle_start) {
-            inBattle = true;
-            currentBattleId = data.battle_id;
+            inBattle = true; currentBattleId = data.battle_id;
             addMessage(`⚔️ ВСТРЕЧА С ${data.enemy}!`, 'combat');
             addMessage(data.description, 'combat');
-            addMessage(`🎯 Слабое место: ${data.weak_spot}`, 'combat');
+            if (data.weak_spot) addMessage(`🎯 Слабое место: ${data.weak_spot}`, 'combat');
             addMessage(`❤️ Ваше здоровье: ${data.player_health}`, 'combat');
             addMessage(`💀 Здоровье врага: ${data.enemy_health}/${data.enemy_max_health}`, 'combat');
-            renderBattleButtons();
-            return;
+            renderBattleButtons(); return;
         }
-        
-        // Победа
         if (data.victory) {
-            inBattle = false;
-            currentBattleId = null;
+            inBattle = false; currentBattleId = null;
             addMessage(`🎉 ${data.message}`, 'victory');
             if (data.player) player = data.player;
-            updateStats();
-            renderLocationButtons();
-            return;
+            updateStats(); renderLocationButtons(); return;
         }
-        
-        // Поражение
         if (data.defeat) {
-            inBattle = false;
-            currentBattleId = null;
+            inBattle = false; currentBattleId = null;
             addMessage(`💀 ${data.message}`, 'error');
-            if (data.player) {
-                player = data.player;
-                currentLocation = player.location || "Стена Мария";
-            }
-            updateStats();
-            renderLocationButtons();
-            return;
+            if (data.player) player = data.player;
+            if (player) currentLocation = player.location || "Стена Мария";
+            updateStats(); renderLocationButtons(); return;
         }
-        
-        // Побег
         if (data.fled) {
-            inBattle = false;
-            currentBattleId = null;
+            inBattle = false; currentBattleId = null;
             addMessage(`🏃 ${data.message}`, 'system');
             if (data.player) player = data.player;
-            updateStats();
-            renderLocationButtons();
-            return;
+            updateStats(); renderLocationButtons(); return;
         }
-        
-        // Боевое действие
         if (data.action === "attack" || data.action === "heal" || data.action === "flee_fail") {
             addMessage(data.message, 'combat');
             if (data.player_health) addMessage(`❤️ Ваше здоровье: ${data.player_health}`, 'combat');
             if (data.enemy_health) addMessage(`💀 Здоровье врага: ${data.enemy_health}/${data.enemy_max_health}`, 'combat');
             if (data.player) player = data.player;
-            updateStats();
-            return;
+            updateStats(); return;
         }
-        
-        // Успешное действие (покупка, тренировка и т.д.)
         if (data.success) {
             addMessage(`✅ ${data.message}`, 'victory');
             if (data.player) player = data.player;
-            updateStats();
-            return;
+            updateStats(); return;
         }
-        
-        // Характеристики
         if (data.stats) {
             const p = data.stats;
-            addMessage(`📊 ХАРАКТЕРИСТИКИ ${p.name}
-❤️ Здоровье: ${p.health}/${p.max_health}
-⚡ Энергия: ${p.energy}/${p.max_energy}
-⭐ Уровень: ${p.level}
-📈 Опыт: ${p.exp}/${p.max_exp}
-⚔️ Атака: ${p.attack}
-🛡️ Защита: ${p.defense}
-🏃 Ловкость: ${p.agility}
-💰 Золото: ${p.gold}
-📍 Локация: ${p.location}
-🎯 Убито титанов: ${data.total_kills || 0}`, 'system');
+            addMessage(`📊 ХАРАКТЕРИСТИКИ ${p.name}\n❤️ Здоровье: ${p.health}/${p.max_health}\n⚡ Энергия: ${p.energy}/${p.max_energy}\n⭐ Уровень: ${p.level}\n📈 Опыт: ${p.exp}/${p.max_exp}\n⚔️ Атака: ${p.attack}\n🛡️ Защита: ${p.defense}\n🏃 Ловкость: ${p.agility}\n💰 Золото: ${p.gold}\n📍 Локация: ${p.location}`, 'system');
             return;
         }
-        
-        // Инвентарь
         if (data.inventory) {
             let text = "🎒 ИНВЕНТАРЬ:\n";
             if (data.inventory.length === 0) text += "Пусто";
             else {
                 const counts = {};
                 data.inventory.forEach(item => counts[item] = (counts[item] || 0) + 1);
-                for (const [item, count] of Object.entries(counts)) {
-                    text += `• ${item}${count > 1 ? ` x${count}` : ''}\n`;
-                }
+                for (const [item, count] of Object.entries(counts)) text += `• ${item}${count > 1 ? ` x${count}` : ''}\n`;
             }
-            if (data.player) {
-                text += `\n⛽ Газ ODM: ${data.player.gas_level}/100`;
-                text += `\n🔪 Лезвия: ${data.player.blades_count}/6`;
-            }
-            addMessage(text, 'system');
-            return;
+            if (data.player) text += `\n⛽ Газ ODM: ${data.player.gas_level}/100\n🔪 Лезвия: ${data.player.blades_count}/6`;
+            addMessage(text, 'system'); return;
         }
-        
-        // Статус Микасы
         if (data.mikasa_status) {
-            let levelText = ["Незнакомец", "Знакомый", "Товарищ", "Друг", "Близкий друг", "Доверенное лицо"];
-            addMessage(`❤️ ОТНОШЕНИЯ С МИКАСОЙ
-Уровень: ${levelText[data.level]} (${data.level}/5)
-Прогресс: ${data.relationship}/100
-В команде: ${data.has_companion ? "✅ Да" : "❌ Нет"}`, 'system');
+            const levelText = ["Незнакомец", "Знакомый", "Товарищ", "Друг", "Близкий друг", "Доверенное лицо"];
+            addMessage(`❤️ ОТНОШЕНИЯ С МИКАСОЙ\nУровень: ${levelText[data.level]} (${data.level}/5)\nПрогресс: ${data.relationship}/100\nВ команде: ${data.has_companion ? "✅ Да" : "❌ Нет"}`, 'system');
             return;
         }
-        
-        addMessage(`📦 Получены данные: ${JSON.stringify(data)}`, 'system');
-        
     } catch (error) {
-        addMessage(`❌ Ошибка: ${error.message}`, 'error');
+        addMessage(`❌ Ошибка: ${error.message}. Сервер: ${API_BASE_URL}`, 'error');
         console.error(error);
     }
 }
 
 async function createCharacter(name) {
+    addMessage(`📡 Создание персонажа "${name}"...`, 'system');
     try {
-        const response = await fetch('/api/create', {
+        const response = await fetch(`${API_BASE_URL}/api/create`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: name })
@@ -298,7 +214,8 @@ async function createCharacter(name) {
             addMessage(`❌ ${data.error}`, 'error');
         }
     } catch (error) {
-        addMessage(`❌ Ошибка: ${error.message}`, 'error');
+        addMessage(`❌ Ошибка: ${error.message}. Сервер доступен? ${API_BASE_URL}`, 'error');
+        console.error(error);
     }
 }
 
@@ -309,11 +226,10 @@ gameInput.addEventListener('keypress', (e) => {
             createCharacter(name);
             gameInput.value = '';
             gameInput.placeholder = "Введите команду...";
-        } else if (player && !inBattle) {
-            // Можно обработать команды
-            gameInput.value = '';
         }
     }
 });
 
 renderLocationButtons();
+addMessage(`🖥️ Сервер: ${API_BASE_URL}`, 'system');
+addMessage(`🖱️ Введите имя персонажа и нажмите Enter`, 'system');
