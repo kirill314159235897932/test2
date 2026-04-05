@@ -11,6 +11,48 @@ const buttonsPanel = document.getElementById('buttonsPanel');
 const statsPanel = document.getElementById('statsPanel');
 const gameInput = document.getElementById('gameInput');
 
+// ============ ФУНКЦИИ СОХРАНЕНИЯ ============
+
+function saveGameToLocal() {
+    if (sessionId && player) {
+        const saveData = {
+            sessionId: sessionId,
+            player: player,
+            currentLocation: currentLocation,
+            savedAt: new Date().toISOString()
+        };
+        localStorage.setItem('rpg_save', JSON.stringify(saveData));
+        console.log('✅ Игра сохранена в localStorage');
+    }
+}
+
+function loadGameFromLocal() {
+    const saved = localStorage.getItem('rpg_save');
+    if (saved) {
+        try {
+            const saveData = JSON.parse(saved);
+            sessionId = saveData.sessionId;
+            player = saveData.player;
+            currentLocation = saveData.currentLocation || player.location || "Стена Мария";
+            addMessage(`📂 <b>Загрузка сохранения...</b>`, 'system');
+            addMessage(`✨ С возвращением, ${player.name}! Уровень ${player.level}`, 'victory');
+            updateStats();
+            renderLocationButtons();
+            return true;
+        } catch(e) {
+            console.error('Ошибка загрузки сохранения:', e);
+        }
+    }
+    return false;
+}
+
+function deleteSave() {
+    localStorage.removeItem('rpg_save');
+    addMessage(`🗑️ Сохранение удалено`, 'system');
+}
+
+// ============ ОСТАЛЬНЫЕ ФУНКЦИИ ============
+
 function addMessage(text, type = 'system') {
     const msg = document.createElement('div');
     msg.className = `message msg-${type}`;
@@ -21,7 +63,7 @@ function addMessage(text, type = 'system') {
 
 function updateStats() {
     if (!player) {
-        statsPanel.innerHTML = '<span class="stat">👤 Создайте персонажа</span>';
+        statsPanel.innerHTML = '<span class="stat">👤 Создайте персонажа</span><span class="stat">💾 Нет сохранения</span>';
         return;
     }
     statsPanel.innerHTML = `
@@ -33,32 +75,34 @@ function updateStats() {
         <span class="stat">🗡️ ${player.attack}</span>
         <span class="stat">🛡️ ${player.defense}</span>
         <span class="stat">🏃 ${player.agility}</span>
+        <span class="stat">💾 Сохранено</span>
     `;
 }
 
 function renderLocationButtons() {
     const buttonsMap = {
-        "Стена Мария": ["Стена Роза", "За стеной", "Казармы", "Торговый район", "Центральная площадь", "Дом Аккерманов", "stats", "inventory"],
-        "Стена Роза": ["Стена Мария", "Стена Сина", "Тренировочная площадка", "Госпиталь", "Лаборатория", "stats"],
-        "Стена Сина": ["Стена Роза", "Королевский дворец", "Рынок Сины", "Храм воинов", "Госпиталь", "stats"],
-        "За стеной": ["hunt", "explore", "Броня Титана", "Колоссальный титан", "Дракон", "Назад"],
-        "Казармы": ["train_odm", "train_normal", "buy_odm", "buy_gas", "buy_blades", "Назад"],
-        "Тренировочная площадка": ["train_odm", "train_normal", "Назад"],
-        "Торговый район": ["Магазин оружия", "Аптека", "Магазин ODM", "Назад"],
-        "Магазин оружия": ["buy_sword", "buy_shield", "Назад"],
-        "Аптека": ["buy_potion", "Назад"],
-        "Магазин ODM": ["buy_gas", "buy_blades", "Назад"],
-        "Центральная площадь": ["rest", "daily", "Назад"],
-        "Госпиталь": ["heal", "Назад"],
-        "Лаборатория": ["Сдать трофеи", "Назад"],
-        "Королевский дворец": ["Получить награду", "Назад"],
-        "Рынок Сины": ["Продать травы", "Назад"],
-        "Храм воинов": ["Благословение", "Назад"],
-        "Дом Аккерманов": ["talk_mikasa", "mikasa_status", "summon_mikasa", "Назад"]
+        "Стена Мария": ["Стена Роза", "За стеной", "Казармы", "Торговый район", "Центральная площадь", "Дом Аккерманов", "stats", "inventory", "save_game", "delete_save"],
+        "Стена Роза": ["Стена Мария", "Стена Сина", "Тренировочная площадка", "Госпиталь", "Лаборатория", "stats", "inventory", "save_game"],
+        "Стена Сина": ["Стена Роза", "Королевский дворец", "Рынок Сины", "Храм воинов", "Госпиталь", "stats", "inventory", "save_game"],
+        "За стеной": ["hunt", "explore", "Броня Титана", "Колоссальный титан", "Дракон", "stats", "save_game", "Назад"],
+        "Казармы": ["train_odm", "train_normal", "buy_odm", "buy_gas", "buy_blades", "stats", "save_game", "Назад"],
+        "Тренировочная площадка": ["train_odm", "train_normal", "stats", "save_game", "Назад"],
+        "Торговый район": ["Магазин оружия", "Аптека", "Магазин ODM", "stats", "save_game", "Назад"],
+        "Магазин оружия": ["buy_sword", "buy_shield", "stats", "save_game", "Назад"],
+        "Аптека": ["buy_potion", "stats", "save_game", "Назад"],
+        "Магазин ODM": ["buy_gas", "buy_blades", "stats", "save_game", "Назад"],
+        "Центральная площадь": ["rest", "daily", "stats", "save_game", "Назад"],
+        "Госпиталь": ["heal", "stats", "save_game", "Назад"],
+        "Лаборатория": ["Сдать трофеи", "stats", "save_game", "Назад"],
+        "Королевский дворец": ["Получить награду", "stats", "save_game", "Назад"],
+        "Рынок Сины": ["Продать травы", "stats", "save_game", "Назад"],
+        "Храм воинов": ["Благословение", "stats", "save_game", "Назад"],
+        "Дом Аккерманов": ["talk_mikasa", "mikasa_status", "summon_mikasa", "stats", "save_game", "Назад"]
     };
     
     const actionNames = {
-        "stats": "📊 Характеристики", "inventory": "🎒 Инвентарь", "hunt": "🎯 Охота на титанов",
+        "stats": "📊 Характеристики", "inventory": "🎒 Инвентарь", "save_game": "💾 Сохранить игру",
+        "delete_save": "🗑️ Удалить сохранение", "hunt": "🎯 Охота на титанов",
         "explore": "🔍 Исследовать лес", "train_odm": "🎯 Тренировка с ODM", "train_normal": "💪 Без ODM",
         "buy_odm": "🛡️ Купить ODM (100g)", "buy_gas": "⛽ Купить газ (20g)", "buy_blades": "🔪 Купить лезвия (10g)",
         "buy_sword": "🗡️ Купить меч (50g)", "buy_shield": "🛡️ Купить щит (30g)", "buy_potion": "🧪 Зелье здоровья (20g)",
@@ -76,7 +120,7 @@ function renderLocationButtons() {
         "Благословение": "🙏 Благословение (50g)", "Сдать трофеи": "🎖️ Сдать трофеи"
     };
     
-    const acts = buttonsMap[currentLocation] || ["Стена Мария", "stats"];
+    const acts = buttonsMap[currentLocation] || ["Стена Мария", "stats", "save_game"];
     const grid = document.createElement('div');
     grid.className = 'button-grid';
     
@@ -85,6 +129,7 @@ function renderLocationButtons() {
         btn.className = 'game-btn';
         if (action === "hunt" || action.includes("Титан") || action.includes("Дракон")) btn.classList.add('btn-danger');
         if (action === "rest" || action === "heal") btn.classList.add('btn-warning');
+        if (action === "delete_save") btn.classList.add('btn-danger');
         btn.textContent = actionNames[action] || action;
         btn.onclick = () => sendAction(action);
         grid.appendChild(btn);
@@ -112,6 +157,28 @@ function renderBattleButtons() {
 }
 
 async function sendAction(action) {
+    // Обработка сохранения и удаления
+    if (action === "save_game") {
+        if (sessionId && player) {
+            saveGameToLocal();
+            addMessage(`💾 <b>Игра сохранена!</b>`, 'victory');
+        } else {
+            addMessage(`❌ Нечего сохранять - создайте персонажа!`, 'error');
+        }
+        return;
+    }
+    
+    if (action === "delete_save") {
+        deleteSave();
+        return;
+    }
+    
+    // Если нет персонажа и действие не связано с сохранением
+    if (!sessionId && action !== "save_game" && action !== "delete_save") {
+        addMessage(`❌ Сначала создайте персонажа!`, 'error');
+        return;
+    }
+    
     try {
         const response = await fetch(`${API_BASE_URL}/api/action`, {
             method: 'POST',
@@ -121,12 +188,16 @@ async function sendAction(action) {
         const data = await response.json();
         
         if (data.error) { addMessage(`❌ ${data.error}`, 'error'); return; }
+        
         if (data.location) {
             currentLocation = data.location;
             addMessage(`📍 ${data.description || data.location}`, 'system');
             if (data.player) player = data.player;
-            updateStats(); renderLocationButtons(); return;
+            updateStats(); renderLocationButtons(); 
+            saveGameToLocal(); // Автосохранение после смены локации
+            return;
         }
+        
         if (data.battle_start) {
             inBattle = true; currentBattleId = data.battle_id;
             addMessage(`⚔️ ВСТРЕЧА С ${data.enemy}!`, 'combat');
@@ -136,42 +207,59 @@ async function sendAction(action) {
             addMessage(`💀 Здоровье врага: ${data.enemy_health}/${data.enemy_max_health}`, 'combat');
             renderBattleButtons(); return;
         }
+        
         if (data.victory) {
             inBattle = false; currentBattleId = null;
             addMessage(`🎉 ${data.message}`, 'victory');
             if (data.player) player = data.player;
-            updateStats(); renderLocationButtons(); return;
+            updateStats(); renderLocationButtons(); 
+            saveGameToLocal(); // Автосохранение после победы
+            return;
         }
+        
         if (data.defeat) {
             inBattle = false; currentBattleId = null;
             addMessage(`💀 ${data.message}`, 'error');
             if (data.player) player = data.player;
             if (player) currentLocation = player.location || "Стена Мария";
-            updateStats(); renderLocationButtons(); return;
+            updateStats(); renderLocationButtons(); 
+            saveGameToLocal(); // Автосохранение после поражения
+            return;
         }
+        
         if (data.fled) {
             inBattle = false; currentBattleId = null;
             addMessage(`🏃 ${data.message}`, 'system');
             if (data.player) player = data.player;
-            updateStats(); renderLocationButtons(); return;
+            updateStats(); renderLocationButtons(); 
+            saveGameToLocal();
+            return;
         }
+        
         if (data.action === "attack" || data.action === "heal" || data.action === "flee_fail") {
             addMessage(data.message, 'combat');
             if (data.player_health) addMessage(`❤️ Ваше здоровье: ${data.player_health}`, 'combat');
             if (data.enemy_health) addMessage(`💀 Здоровье врага: ${data.enemy_health}/${data.enemy_max_health}`, 'combat');
             if (data.player) player = data.player;
-            updateStats(); return;
+            updateStats(); 
+            saveGameToLocal(); // Автосохранение после каждого хода
+            return;
         }
+        
         if (data.success) {
             addMessage(`✅ ${data.message}`, 'victory');
             if (data.player) player = data.player;
-            updateStats(); return;
+            updateStats(); 
+            saveGameToLocal(); // Автосохранение после действий
+            return;
         }
+        
         if (data.stats) {
             const p = data.stats;
             addMessage(`📊 ХАРАКТЕРИСТИКИ ${p.name}\n❤️ Здоровье: ${p.health}/${p.max_health}\n⚡ Энергия: ${p.energy}/${p.max_energy}\n⭐ Уровень: ${p.level}\n📈 Опыт: ${p.exp}/${p.max_exp}\n⚔️ Атака: ${p.attack}\n🛡️ Защита: ${p.defense}\n🏃 Ловкость: ${p.agility}\n💰 Золото: ${p.gold}\n📍 Локация: ${p.location}`, 'system');
             return;
         }
+        
         if (data.inventory) {
             let text = "🎒 ИНВЕНТАРЬ:\n";
             if (data.inventory.length === 0) text += "Пусто";
@@ -183,6 +271,7 @@ async function sendAction(action) {
             if (data.player) text += `\n⛽ Газ ODM: ${data.player.gas_level}/100\n🔪 Лезвия: ${data.player.blades_count}/6`;
             addMessage(text, 'system'); return;
         }
+        
         if (data.mikasa_status) {
             const levelText = ["Незнакомец", "Знакомый", "Товарищ", "Друг", "Близкий друг", "Доверенное лицо"];
             addMessage(`❤️ ОТНОШЕНИЯ С МИКАСОЙ\nУровень: ${levelText[data.level]} (${data.level}/5)\nПрогресс: ${data.relationship}/100\nВ команде: ${data.has_companion ? "✅ Да" : "❌ Нет"}`, 'system');
@@ -210,6 +299,7 @@ async function createCharacter(name) {
             addMessage(`✨ Создан персонаж ${player.name}!`, 'victory');
             updateStats();
             renderLocationButtons();
+            saveGameToLocal(); // Сохраняем нового персонажа
         } else {
             addMessage(`❌ ${data.error}`, 'error');
         }
@@ -219,17 +309,27 @@ async function createCharacter(name) {
     }
 }
 
+// Обработка ввода имени
 gameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         const name = gameInput.value.trim();
-        if (name && !player) {
+        if (name && !sessionId && !player) {
             createCharacter(name);
             gameInput.value = '';
             gameInput.placeholder = "Введите команду...";
+        } else if (name && sessionId) {
+            addMessage(`✅ Персонаж уже создан! Используйте кнопки меню.`, 'system');
+            gameInput.value = '';
         }
     }
 });
 
-renderLocationButtons();
-addMessage(`🖥️ Сервер: ${API_BASE_URL}`, 'system');
-addMessage(`🖱️ Введите имя персонажа и нажмите Enter`, 'system');
+// Загружаем сохранение при старте
+if (!loadGameFromLocal()) {
+    renderLocationButtons();
+    addMessage(`🖥️ Сервер: ${API_BASE_URL}`, 'system');
+    addMessage(`🖱️ Введите имя персонажа и нажмите Enter`, 'system');
+    addMessage(`💾 Игра будет автоматически сохраняться`, 'system');
+} else {
+    addMessage(`💾 Автосохранение включено`, 'system');
+            }
