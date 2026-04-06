@@ -8,7 +8,6 @@ let player = null;
 let currentLocation = "Стена Мария";
 let inBattle = false;
 let currentBattleId = null;
-let reconnectAttempts = 0;
 
 // Чат
 let chatSocket = null;
@@ -46,12 +45,6 @@ function loadGameFromLocal() {
             currentLocation = saveData.currentLocation || player.location || "Стена Мария";
             playerNameForChat = player.name;
             console.log('📂 Загружено сохранение, sessionId:', sessionId);
-            addMessage(`📂 Загрузка сохранения... С возвращением, ${player.name}!`, 'victory');
-            updateStats();
-            renderLocationButtons();
-            
-            // Проверяем, жива ли сессия на сервере
-            checkSessionAlive();
             return true;
         } catch(e) { 
             console.error('Ошибка загрузки:', e);
@@ -74,43 +67,9 @@ function clearSave() {
 function deleteSave() {
     if (confirm('🗑️ Вы уверены, что хотите удалить сохранение? Прогресс будет потерян!')) {
         clearSave();
-        addMessage(`🗑️ Сохранение удалено! Перезагрузите страницу чтобы начать заново.`, 'system');
+        addMessage(`🗑️ Сохранение удалено! Обновите страницу и создайте нового персонажа.`, 'system');
         updateStats();
         renderLocationButtons();
-    }
-}
-
-// Проверка жива ли сессия на сервере
-async function checkSessionAlive() {
-    if (!sessionId) return false;
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/action`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId, action: 'stats' })
-        });
-        const data = await response.json();
-        
-        if (data.error && data.error.includes('Сессия не найдена')) {
-            console.log('⚠️ Сессия устарела, нужно пересоздать персонажа');
-            addMessage(`⚠️ Сессия на сервере устарела. Пожалуйста, создайте персонажа заново.`, 'error');
-            clearSave();
-            updateStats();
-            renderLocationButtons();
-            return false;
-        }
-        
-        if (data.stats) {
-            console.log('✅ Сессия активна');
-            player = data.stats;
-            updateStats();
-            return true;
-        }
-        return true;
-    } catch(e) {
-        console.error('Ошибка проверки сессии:', e);
-        return false;
     }
 }
 
@@ -218,7 +177,32 @@ function renderBattleButtons() {
     buttonsPanel.appendChild(grid);
 }
 
+// ============ ОСНОВНАЯ ФУНКЦИЯ ОТПРАВКИ ДЕЙСТВИЙ ============
 async function sendAction(action) {
+    // Навигация по локациям (работает даже без сессии)
+    const locationNames = ["Стена Мария", "Стена Роза", "Стена Сина", "За стеной", "Казармы", "Тренировочная площадка", "Торговый район", "Магазин оружия", "Аптека", "Магазин ODM", "Центральная площадь", "Госпиталь", "Лаборатория", "Королевский дворец", "Рынок Сины", "Храм воинов", "Дом Аккерманов"];
+    
+    if (locationNames.includes(action)) {
+        currentLocation = action;
+        addMessage(`📍 Переход в ${action}`, 'system');
+        renderLocationButtons();
+        if (player) {
+            player.location = action;
+            saveGameToLocal();
+        }
+        return;
+    }
+    
+    if (action === "Назад") {
+        currentLocation = "Стена Мария";
+        if (player) player.location = "Стена Мария";
+        addMessage(`📍 Возврат в Стена Мария`, 'system');
+        renderLocationButtons();
+        saveGameToLocal();
+        return;
+    }
+    
+    // Сохранение и удаление
     if (action === "save_game") {
         if (sessionId && player) {
             saveGameToLocal();
@@ -234,8 +218,9 @@ async function sendAction(action) {
         return;
     }
     
+    // Если нет сессии - просим создать персонажа
     if (!sessionId) {
-        addMessage(`❌ Сначала создайте персонажа!`, 'error');
+        addMessage(`❌ Сначала создайте персонажа! Введите имя и нажмите Enter.`, 'error');
         return;
     }
     
@@ -247,56 +232,73 @@ async function sendAction(action) {
         });
         const data = await response.json();
         
+        // Если сессия устарела - очищаем сохранение и просим создать нового персонажа
         if (data.error && data.error.includes('Сессия не найдена')) {
-            addMessage(`⚠️ Сессия устарела. Пожалуйста, создайте персонажа заново.`, 'error');
+            addMessage(`⚠️ Ваша сессия устарела (сервер перезапустился). Пожалуйста, создайте персонажа заново!`, 'error');
             clearSave();
             updateStats();
             renderLocationButtons();
             return;
         }
         
-        if (data.error) { addMessage(`❌ ${data.error}`, 'error'); return; }
+        if (data.error) { 
+            addMessage(`❌ ${data.error}`, 'error'); 
+            return; 
+        }
         
         if (data.location) {
             currentLocation = data.location;
             addMessage(`📍 ${data.description || data.location}`, 'system');
             if (data.player) player = data.player;
-            updateStats(); renderLocationButtons(); saveGameToLocal();
+            updateStats(); 
+            renderLocationButtons(); 
+            saveGameToLocal();
             return;
         }
         
         if (data.battle_start) {
-            inBattle = true; currentBattleId = data.battle_id;
+            inBattle = true; 
+            currentBattleId = data.battle_id;
             addMessage(`⚔️ ВСТРЕЧА С ${data.enemy}!`, 'combat');
             addMessage(data.description, 'combat');
             if (data.weak_spot) addMessage(`🎯 Слабое место: ${data.weak_spot}`, 'combat');
             addMessage(`❤️ Ваше здоровье: ${data.player_health}`, 'combat');
             addMessage(`💀 Здоровье врага: ${data.enemy_health}/${data.enemy_max_health}`, 'combat');
-            renderBattleButtons(); return;
+            renderBattleButtons(); 
+            return;
         }
         
         if (data.victory) {
-            inBattle = false; currentBattleId = null;
+            inBattle = false; 
+            currentBattleId = null;
             addMessage(`🎉 ${data.message}`, 'victory');
             if (data.player) player = data.player;
-            updateStats(); renderLocationButtons(); saveGameToLocal();
+            updateStats(); 
+            renderLocationButtons(); 
+            saveGameToLocal();
             return;
         }
         
         if (data.defeat) {
-            inBattle = false; currentBattleId = null;
+            inBattle = false; 
+            currentBattleId = null;
             addMessage(`💀 ${data.message}`, 'error');
             if (data.player) player = data.player;
             if (player) currentLocation = player.location || "Стена Мария";
-            updateStats(); renderLocationButtons(); saveGameToLocal();
+            updateStats(); 
+            renderLocationButtons(); 
+            saveGameToLocal();
             return;
         }
         
         if (data.fled) {
-            inBattle = false; currentBattleId = null;
+            inBattle = false; 
+            currentBattleId = null;
             addMessage(`🏃 ${data.message}`, 'system');
             if (data.player) player = data.player;
-            updateStats(); renderLocationButtons(); saveGameToLocal();
+            updateStats(); 
+            renderLocationButtons(); 
+            saveGameToLocal();
             return;
         }
         
@@ -305,14 +307,16 @@ async function sendAction(action) {
             if (data.player_health) addMessage(`❤️ Ваше здоровье: ${data.player_health}`, 'combat');
             if (data.enemy_health) addMessage(`💀 Здоровье врага: ${data.enemy_health}/${data.enemy_max_health}`, 'combat');
             if (data.player) player = data.player;
-            updateStats(); saveGameToLocal();
+            updateStats(); 
+            saveGameToLocal();
             return;
         }
         
         if (data.success) {
             addMessage(`✅ ${data.message}`, 'victory');
             if (data.player) player = data.player;
-            updateStats(); saveGameToLocal();
+            updateStats(); 
+            saveGameToLocal();
             return;
         }
         
@@ -331,7 +335,8 @@ async function sendAction(action) {
                 for (const [item, count] of Object.entries(counts)) text += `• ${item}${count > 1 ? ` x${count}` : ''}\n`;
             }
             if (data.player) text += `\n⛽ Газ ODM: ${data.player.gas_level}/100\n🔪 Лезвия: ${data.player.blades_count}/6`;
-            addMessage(text, 'system'); return;
+            addMessage(text, 'system'); 
+            return;
         }
         
         if (data.mikasa_status) {
@@ -345,6 +350,7 @@ async function sendAction(action) {
     }
 }
 
+// ============ СОЗДАНИЕ ПЕРСОНАЖА ============
 async function createCharacter(name) {
     addMessage(`📡 Создание персонажа "${name}"...`, 'system');
     try {
@@ -451,25 +457,23 @@ function toggleChat() {
     if (window) window.classList.toggle('collapsed');
 }
 
-// ============ ПРЕДОТВРАЩАЕМ ЗАСЫПАНИЕ СЕРВЕРА (KEEP-ALIVE) ============
+// ============ ПРЕДОТВРАЩАЕМ ЗАСЫПАНИЕ (KEEP-ALIVE) ============
 let lastPing = 0;
 
 async function keepAlive() {
     const now = Date.now();
-    if (now - lastPing < 540000) return; // раз в 9 минут
+    if (now - lastPing < 540000) return;
     
     lastPing = now;
     console.log('🔄 Пинг сервера...');
     
     try {
-        // Пинг бэкенда
         await fetch(`${API_BASE_URL}/api/action`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'stats', session_id: sessionId })
         }).catch(() => {});
         
-        // Пинг чата
         if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
             chatSocket.send(JSON.stringify({ type: 'ping' }));
         } else if (chatSocket && chatSocket.readyState !== WebSocket.OPEN) {
@@ -482,10 +486,8 @@ async function keepAlive() {
     }
 }
 
-// Запускаем keep-alive
 setInterval(keepAlive, 540000);
 setTimeout(keepAlive, 60000);
-console.log('🔄 Keep-alive активирован (пинг каждые 9 минут)');
 
 // ============ ЗАПУСК ============
 gameInput.addEventListener('keypress', (e) => {
@@ -502,16 +504,23 @@ gameInput.addEventListener('keypress', (e) => {
     }
 });
 
-if (!loadGameFromLocal()) {
+// Пробуем загрузить сохранение
+if (loadGameFromLocal()) {
+    addMessage(`📂 Загружено сохранение для ${player.name}!`, 'victory');
+    updateStats();
+    renderLocationButtons();
+    addMessage(`💾 Автосохранение включено`, 'system');
+    if (player) playerNameForChat = player.name;
+} else {
     renderLocationButtons();
     addMessage(`🖥️ Сервер: ${API_BASE_URL}`, 'system');
     addMessage(`🖱️ Введите имя персонажа и нажмите Enter`, 'system');
     addMessage(`💾 Игра будет автоматически сохраняться`, 'system');
-} else {
-    addMessage(`💾 Автосохранение включено`, 'system');
 }
 
 // Подключаем чат
 setTimeout(() => {
     connectChat();
 }, 1000);
+
+console.log('🎮 Игра загружена!');
