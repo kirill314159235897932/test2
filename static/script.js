@@ -552,4 +552,261 @@ function toggleChat() {
 async function updateDiamonds() {
     if (!sessionId) return;
     try {
-        const response = await fetch(`${API_BASE_URL}/api/d
+        const response = await fetch(`${API_BASE_URL}/api/diamonds/get`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId })
+        });
+        const data = await response.json();
+        playerDiamonds = data.diamonds || 0;
+        updateDiamondsDisplay();
+    } catch(e) { console.error('Ошибка получения алмазов:', e); }
+}
+
+function updateDiamondsDisplay() {
+    let diamondsSpan = document.getElementById('diamondsDisplay');
+    if (!diamondsSpan && player) {
+        const statsPanelElem = document.getElementById('statsPanel');
+        if (statsPanelElem) {
+            diamondsSpan = document.createElement('span');
+            diamondsSpan.id = 'diamondsDisplay';
+            diamondsSpan.className = 'stat';
+            statsPanelElem.appendChild(diamondsSpan);
+        }
+    }
+    if (diamondsSpan) {
+        diamondsSpan.innerHTML = `💎 ${playerDiamonds}`;
+    }
+}
+
+async function showPrivilegeShop() {
+    const response = await fetch(`${API_BASE_URL}/api/privileges/list`);
+    const data = await response.json();
+    const privileges = data.privileges;
+    
+    const menuHtml = `
+    <div id="shopModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:1001; display:flex; justify-content:center; align-items:center;">
+        <div style="background:#1a1a2e; border-radius:20px; padding:20px; max-width:450px; width:90%; border:2px solid #ffd700;">
+            <h2 style="color:#ffd700; text-align:center;">💎 МАГАЗИН ПРИВИЛЕГИЙ</h2>
+            <p style="color:#aaa; text-align:center;">Ваши алмазы: <span style="color:#ffd700; font-size:1.5rem;">💎 ${playerDiamonds}</span></p>
+            <hr style="border-color:#333;">
+            ${Object.entries(privileges).map(([id, priv]) => `
+                <div class="shop-item" data-id="${id}" style="background:#2c2c3e; margin:10px 0; padding:15px; border-radius:15px; cursor:pointer; transition:all 0.2s;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:1.2rem;">${priv.name}</div>
+                            <div style="font-size:0.8rem; color:#aaa;">на ${priv.duration} дней</div>
+                        </div>
+                        <div style="color:#ffd700; font-weight:bold;">💎 ${priv.price}</div>
+                    </div>
+                </div>
+            `).join('')}
+            <hr style="border-color:#333;">
+            <button id="addDiamondsBtn" style="width:100%; margin:10px 0; padding:12px; background:linear-gradient(135deg,#ffd700,#ffaa00); border:none; border-radius:10px; cursor:pointer; font-weight:bold;">💎 ПОПОЛНИТЬ АЛМАЗЫ</button>
+            <button id="closeShopModal" style="width:100%; margin-top:10px; padding:10px; background:#2c2c3e; border:1px solid #ff4444; color:#ff8888; border-radius:10px; cursor:pointer;">Закрыть</button>
+        </div>
+    </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', menuHtml);
+    
+    document.querySelectorAll('.shop-item').forEach(item => {
+        item.addEventListener('click', async () => {
+            const privilegeId = item.dataset.id;
+            await buyPrivilege(privilegeId);
+        });
+    });
+    
+    document.getElementById('addDiamondsBtn').addEventListener('click', () => {
+        document.getElementById('shopModal').remove();
+        showDonateOptions();
+    });
+    
+    document.getElementById('closeShopModal').addEventListener('click', () => {
+        document.getElementById('shopModal').remove();
+    });
+}
+
+async function showDonateOptions() {
+    const options = [
+        { rub: 100, diamonds: 100, bonus: "0%" },
+        { rub: 300, diamonds: 330, bonus: "+10%" },
+        { rub: 500, diamonds: 600, bonus: "+20%" },
+        { rub: 1000, diamonds: 1300, bonus: "+30%" }
+    ];
+    
+    const menuHtml = `
+    <div id="donateModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:1001; display:flex; justify-content:center; align-items:center;">
+        <div style="background:#1a1a2e; border-radius:20px; padding:20px; max-width:400px; width:90%; border:2px solid #ffd700;">
+            <h2 style="color:#ffd700; text-align:center;">💎 ПОПОЛНИТЬ АЛМАЗЫ</h2>
+            <p style="color:#aaa; text-align:center;">Выберите сумму:</p>
+            ${options.map(opt => `
+                <div class="donate-option" data-rub="${opt.rub}" data-diamonds="${opt.diamonds}" style="background:#2c2c3e; margin:10px; padding:15px; border-radius:15px; cursor:pointer; transition:all 0.2s;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <span style="font-size:1.2rem;">${opt.rub} ₽</span>
+                            <div style="font-size:0.8rem; color:#88ff88;">+${opt.bonus} бонус</div>
+                        </div>
+                        <div style="color:#ffd700; font-weight:bold;">💎 ${opt.diamonds}</div>
+                    </div>
+                </div>
+            `).join('')}
+            <button id="closeDonateModal" style="width:100%; margin-top:15px; padding:10px; background:#2c2c3e; border:1px solid #ff4444; color:#ff8888; border-radius:10px; cursor:pointer;">Назад</button>
+        </div>
+    </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', menuHtml);
+    
+    document.querySelectorAll('.donate-option').forEach(opt => {
+        opt.addEventListener('click', async () => {
+            const rub = parseInt(opt.dataset.rub);
+            await createDonation(rub);
+        });
+    });
+    
+    document.getElementById('closeDonateModal').addEventListener('click', () => {
+        document.getElementById('donateModal').remove();
+        showPrivilegeShop();
+    });
+}
+
+async function createDonation(amount) {
+    addMessage(`💎 Создание платежа на ${amount} ₽...`, 'system');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/donate/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId, amount: amount })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            addMessage(`✅ Платёж создан! Вы получите ${data.diamonds} алмазов.`, 'victory');
+            
+            if (confirm('Это тестовый режим. Имитировать оплату?')) {
+                const testResponse = await fetch(`${API_BASE_URL}/api/donate/test/${data.donation_id}`);
+                const testData = await testResponse.json();
+                if (testData.success) {
+                    addMessage(`✨ ${testData.message}`, 'victory');
+                    await updateDiamonds();
+                }
+            } else {
+                addMessage(`🔗 После оплаты алмазы начислятся автоматически.`, 'system');
+                window.open(data.donation_url, '_blank');
+            }
+            
+            document.getElementById('donateModal')?.remove();
+        } else {
+            addMessage(`❌ ${data.error}`, 'error');
+        }
+    } catch (error) {
+        addMessage(`❌ Ошибка: ${error.message}`, 'error');
+    }
+}
+
+async function buyPrivilege(privilegeType) {
+    addMessage(`💎 Покупка привилегии...`, 'system');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/privileges/buy`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId, privilege_type: privilegeType })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            addMessage(`✅ ${data.message}`, 'victory');
+            playerDiamonds = data.diamonds;
+            updateDiamondsDisplay();
+            await updateChatPrivilege();
+            document.getElementById('shopModal')?.remove();
+        } else {
+            addMessage(`❌ ${data.error}`, 'error');
+        }
+    } catch (error) {
+        addMessage(`❌ Ошибка: ${error.message}`, 'error');
+    }
+}
+
+async function updateChatPrivilege() {
+    if (!playerNameForChat) return;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/privileges/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId, player_name: playerNameForChat })
+        });
+        const data = await response.json();
+        
+        if (data.privilege && chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+            chatSocket.send(JSON.stringify({
+                type: 'update_privilege',
+                name: playerNameForChat,
+                badge: data.privilege.badge,
+                color: data.privilege.color
+            }));
+            currentPrivilege = data.privilege;
+        }
+    } catch(e) {
+        console.error('Ошибка обновления привилегии:', e);
+    }
+}
+
+function addShopButton() {
+    const statsPanelElem = document.getElementById('statsPanel');
+    if (statsPanelElem && !document.getElementById('shopBtn')) {
+        const shopBtn = document.createElement('button');
+        shopBtn.id = 'shopBtn';
+        shopBtn.className = 'donate-btn';
+        shopBtn.textContent = '💎 Магазин';
+        shopBtn.onclick = () => showPrivilegeShop();
+        shopBtn.style.display = player ? 'inline-block' : 'none';
+        shopBtn.style.marginLeft = '10px';
+        statsPanelElem.appendChild(shopBtn);
+    }
+}
+
+// ============ KEEP-ALIVE ============
+let lastPing = 0;
+async function keepAlive() {
+    const now = Date.now();
+    if (now - lastPing < 540000) return;
+    lastPing = now;
+    try {
+        await fetch(`${API_BASE_URL}/api/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'stats', session_id: sessionId }) }).catch(() => {});
+        if (chatSocket && chatSocket.readyState === WebSocket.OPEN) chatSocket.send(JSON.stringify({ type: 'ping' }));
+        else if (chatSocket && chatSocket.readyState !== WebSocket.OPEN) connectChat();
+    } catch(e) {}
+}
+setInterval(keepAlive, 540000);
+setTimeout(keepAlive, 60000);
+
+// ============ ЗАПУСК ============
+gameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        const name = gameInput.value.trim();
+        if (name && !sessionId && !player) {
+            createCharacter(name);
+            gameInput.value = '';
+        } else if (name && sessionId) {
+            addMessage(`✅ Персонаж уже создан! Используйте кнопки меню.`, 'system');
+            gameInput.value = '';
+        }
+    }
+});
+
+if (!loadGameFromLocal()) {
+    renderLocationButtons();
+    addMessage(`🖥️ Сервер: ${API_BASE_URL}`, 'system');
+    addMessage(`🖱️ Введите имя персонажа и нажмите Enter`, 'system');
+    addMessage(`💾 Игра будет автоматически сохраняться`, 'system');
+} else {
+    addMessage(`💾 Автосохранение включено`, 'system');
+}
+
+setTimeout(() => { connectChat(); }, 1000);
+console.log('🎮 Игра загружена!');
