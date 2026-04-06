@@ -19,6 +19,10 @@ let lastDailyTime = null;
 let lastTrainingTime = null;
 let lastDiceTime = null;
 
+// Донат
+let playerDiamonds = 0;
+let currentPrivilege = null;
+
 // DOM элементы
 const messagesDiv = document.getElementById('messages');
 const buttonsPanel = document.getElementById('buttonsPanel');
@@ -48,6 +52,11 @@ function loadGameFromLocal() {
             addMessage(`📂 Загрузка сохранения... С возвращением, ${player.name}!`, 'victory');
             updateStats();
             renderLocationButtons();
+            setTimeout(() => {
+                addShopButton();
+                updateDiamonds();
+                updateChatPrivilege();
+            }, 500);
             return true;
         } catch(e) { console.error(e); clearSave(); }
     }
@@ -191,7 +200,7 @@ function renderBattleButtons() {
 async function sendAction(action) {
     console.log('📤 sendAction вызван с action:', action);
     
-    // НАВИГАЦИЯ ПО ЛОКАЦИЯМ (русские названия)
+    // НАВИГАЦИЯ ПО ЛОКАЦИЯМ
     const locationNames = ["Стена Мария", "Стена Роза", "Стена Сина", "За стеной", "Казармы", "Тренировочная площадка", "Торговый район", "Магазин оружия", "Аптека", "Магазин ODM", "Черный рынок", "Центральная площадь", "Таверна", "Госпиталь", "Лаборатория", "Королевский дворец", "Рынок Сины", "Храм воинов", "Дом Аккерманов", "Боссы"];
     
     if (locationNames.includes(action)) {
@@ -446,6 +455,9 @@ async function createCharacter(name) {
             updateStats();
             renderLocationButtons();
             saveGameToLocal();
+            addShopButton();
+            await updateDiamonds();
+            await updateChatPrivilege();
         } else {
             addMessage(`❌ ${data.error}`, 'error');
         }
@@ -507,6 +519,9 @@ function connectChat() {
         addChatMessage('system', '🔌 Отключено от чата. Переподключение...');
         setTimeout(connectChat, 5000);
     };
+    setTimeout(() => {
+        if (playerNameForChat) updateChatPrivilege();
+    }, 2000);
 }
 
 function sendChatMessage() {
@@ -532,43 +547,9 @@ function toggleChat() {
     if (window) window.classList.toggle('collapsed');
 }
 
-// ============ KEEP-ALIVE ============
-let lastPing = 0;
-async function keepAlive() {
-    const now = Date.now();
-    if (now - lastPing < 540000) return;
-    lastPing = now;
+// ============ ДОНАТ-СИСТЕМА ============
+
+async function updateDiamonds() {
+    if (!sessionId) return;
     try {
-        await fetch(`${API_BASE_URL}/api/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'stats', session_id: sessionId }) }).catch(() => {});
-        if (chatSocket && chatSocket.readyState === WebSocket.OPEN) chatSocket.send(JSON.stringify({ type: 'ping' }));
-        else if (chatSocket && chatSocket.readyState !== WebSocket.OPEN) connectChat();
-    } catch(e) {}
-}
-setInterval(keepAlive, 540000);
-setTimeout(keepAlive, 60000);
-
-// ============ ЗАПУСК ============
-gameInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        const name = gameInput.value.trim();
-        if (name && !sessionId && !player) {
-            createCharacter(name);
-            gameInput.value = '';
-        } else if (name && sessionId) {
-            addMessage(`✅ Персонаж уже создан! Используйте кнопки меню.`, 'system');
-            gameInput.value = '';
-        }
-    }
-});
-
-if (!loadGameFromLocal()) {
-    renderLocationButtons();
-    addMessage(`🖥️ Сервер: ${API_BASE_URL}`, 'system');
-    addMessage(`🖱️ Введите имя персонажа и нажмите Enter`, 'system');
-    addMessage(`💾 Игра будет автоматически сохраняться`, 'system');
-} else {
-    addMessage(`💾 Автосохранение включено`, 'system');
-}
-
-setTimeout(() => { connectChat(); }, 1000);
-console.log('🎮 Игра загружена!');
+        const response = await fetch(`${API_BASE_URL}/api/d
