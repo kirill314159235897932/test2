@@ -247,7 +247,6 @@ async function sendAction(action) {
         });
         const data = await response.json();
         
-        // Если сессия не найдена - пробуем восстановить
         if (data.error && data.error.includes('Сессия не найдена')) {
             addMessage(`⚠️ Сессия устарела. Пожалуйста, создайте персонажа заново.`, 'error');
             clearSave();
@@ -451,6 +450,42 @@ function toggleChat() {
     const window = document.getElementById('chatWindow');
     if (window) window.classList.toggle('collapsed');
 }
+
+// ============ ПРЕДОТВРАЩАЕМ ЗАСЫПАНИЕ СЕРВЕРА (KEEP-ALIVE) ============
+let lastPing = 0;
+
+async function keepAlive() {
+    const now = Date.now();
+    if (now - lastPing < 540000) return; // раз в 9 минут
+    
+    lastPing = now;
+    console.log('🔄 Пинг сервера...');
+    
+    try {
+        // Пинг бэкенда
+        await fetch(`${API_BASE_URL}/api/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'stats', session_id: sessionId })
+        }).catch(() => {});
+        
+        // Пинг чата
+        if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+            chatSocket.send(JSON.stringify({ type: 'ping' }));
+        } else if (chatSocket && chatSocket.readyState !== WebSocket.OPEN) {
+            connectChat();
+        }
+        
+        console.log('✅ Пинг успешен');
+    } catch(e) {
+        console.log('Пинг не удался:', e);
+    }
+}
+
+// Запускаем keep-alive
+setInterval(keepAlive, 540000);
+setTimeout(keepAlive, 60000);
+console.log('🔄 Keep-alive активирован (пинг каждые 9 минут)');
 
 // ============ ЗАПУСК ============
 gameInput.addEventListener('keypress', (e) => {
