@@ -290,8 +290,6 @@ body {
 }
 
 /* ============ СТИЛИ ДОНАТ-СИСТЕМЫ ============ */
-
-/* Кнопка магазина */
 .donate-btn {
     background: linear-gradient(135deg, #ffd700, #ffaa00);
     border: none;
@@ -308,20 +306,13 @@ body {
     box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
 }
 
-/* Отображение алмазов */
 #diamondsDisplay {
     background: linear-gradient(135deg, #ffd700, #ffaa00);
     color: #1a1a2e;
     font-weight: bold;
 }
 
-/* Элементы магазина */
 .shop-item {
-    background: #2c2c3e;
-    margin: 10px 0;
-    padding: 15px;
-    border-radius: 15px;
-    cursor: pointer;
     transition: all 0.2s;
 }
 
