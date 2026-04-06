@@ -8,6 +8,7 @@ let player = null;
 let currentLocation = "Стена Мария";
 let inBattle = false;
 let currentBattleId = null;
+let reconnectAttempts = 0;
 
 // Чат
 let chatSocket = null;
@@ -22,10 +23,17 @@ const gameInput = document.getElementById('gameInput');
 // ============ ФУНКЦИИ СОХРАНЕНИЯ ============
 function saveGameToLocal() {
     if (sessionId && player) {
-        const saveData = { sessionId, player, currentLocation, savedAt: new Date().toISOString() };
+        const saveData = { 
+            sessionId: sessionId, 
+            player: player, 
+            currentLocation: currentLocation, 
+            savedAt: new Date().toISOString() 
+        };
         localStorage.setItem('rpg_save', JSON.stringify(saveData));
-        console.log('✅ Игра сохранена');
+        console.log('✅ Игра сохранена, sessionId:', sessionId);
+        return true;
     }
+    return false;
 }
 
 function loadGameFromLocal() {
@@ -36,13 +44,74 @@ function loadGameFromLocal() {
             sessionId = saveData.sessionId;
             player = saveData.player;
             currentLocation = saveData.currentLocation || player.location || "Стена Мария";
+            playerNameForChat = player.name;
+            console.log('📂 Загружено сохранение, sessionId:', sessionId);
             addMessage(`📂 Загрузка сохранения... С возвращением, ${player.name}!`, 'victory');
             updateStats();
             renderLocationButtons();
+            
+            // Проверяем, жива ли сессия на сервере
+            checkSessionAlive();
             return true;
-        } catch(e) { console.error(e); }
+        } catch(e) { 
+            console.error('Ошибка загрузки:', e);
+            clearSave();
+        }
     }
     return false;
+}
+
+function clearSave() {
+    localStorage.removeItem('rpg_save');
+    sessionId = null;
+    player = null;
+    playerNameForChat = null;
+    currentLocation = "Стена Мария";
+    inBattle = false;
+    currentBattleId = null;
+}
+
+function deleteSave() {
+    if (confirm('🗑️ Вы уверены, что хотите удалить сохранение? Прогресс будет потерян!')) {
+        clearSave();
+        addMessage(`🗑️ Сохранение удалено! Перезагрузите страницу чтобы начать заново.`, 'system');
+        updateStats();
+        renderLocationButtons();
+    }
+}
+
+// Проверка жива ли сессия на сервере
+async function checkSessionAlive() {
+    if (!sessionId) return false;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId, action: 'stats' })
+        });
+        const data = await response.json();
+        
+        if (data.error && data.error.includes('Сессия не найдена')) {
+            console.log('⚠️ Сессия устарела, нужно пересоздать персонажа');
+            addMessage(`⚠️ Сессия на сервере устарела. Пожалуйста, создайте персонажа заново.`, 'error');
+            clearSave();
+            updateStats();
+            renderLocationButtons();
+            return false;
+        }
+        
+        if (data.stats) {
+            console.log('✅ Сессия активна');
+            player = data.stats;
+            updateStats();
+            return true;
+        }
+        return true;
+    } catch(e) {
+        console.error('Ошибка проверки сессии:', e);
+        return false;
+    }
 }
 
 // ============ ФУНКЦИИ ИГРЫ ============
@@ -74,27 +143,27 @@ function updateStats() {
 
 function renderLocationButtons() {
     const buttonsMap = {
-        "Стена Мария": ["Стена Роза", "За стеной", "Казармы", "Торговый район", "Центральная площадь", "Дом Аккерманов", "stats", "inventory", "save_game"],
-        "Стена Роза": ["Стена Мария", "Стена Сина", "Тренировочная площадка", "Госпиталь", "Лаборатория", "stats", "inventory", "save_game"],
-        "Стена Сина": ["Стена Роза", "Королевский дворец", "Рынок Сины", "Храм воинов", "Госпиталь", "stats", "inventory", "save_game"],
-        "За стеной": ["hunt", "explore", "Броня Титана", "Колоссальный титан", "Дракон", "stats", "save_game", "Назад"],
-        "Казармы": ["train_odm", "train_normal", "buy_odm", "buy_gas", "buy_blades", "stats", "save_game", "Назад"],
-        "Тренировочная площадка": ["train_odm", "train_normal", "stats", "save_game", "Назад"],
-        "Торговый район": ["Магазин оружия", "Аптека", "Магазин ODM", "stats", "save_game", "Назад"],
-        "Магазин оружия": ["buy_sword", "buy_shield", "stats", "save_game", "Назад"],
-        "Аптека": ["buy_potion", "stats", "save_game", "Назад"],
-        "Магазин ODM": ["buy_gas", "buy_blades", "stats", "save_game", "Назад"],
-        "Центральная площадь": ["rest", "daily", "stats", "save_game", "Назад"],
-        "Госпиталь": ["heal", "stats", "save_game", "Назад"],
-        "Лаборатория": ["Сдать трофеи", "stats", "save_game", "Назад"],
-        "Королевский дворец": ["Получить награду", "stats", "save_game", "Назад"],
-        "Рынок Сины": ["Продать травы", "stats", "save_game", "Назад"],
-        "Храм воинов": ["Благословение", "stats", "save_game", "Назад"],
-        "Дом Аккерманов": ["talk_mikasa", "mikasa_status", "summon_mikasa", "stats", "save_game", "Назад"]
+        "Стена Мария": ["Стена Роза", "За стеной", "Казармы", "Торговый район", "Центральная площадь", "Дом Аккерманов", "stats", "inventory", "save_game", "delete_save"],
+        "Стена Роза": ["Стена Мария", "Стена Сина", "Тренировочная площадка", "Госпиталь", "Лаборатория", "stats", "inventory", "save_game", "delete_save"],
+        "Стена Сина": ["Стена Роза", "Королевский дворец", "Рынок Сины", "Храм воинов", "Госпиталь", "stats", "inventory", "save_game", "delete_save"],
+        "За стеной": ["hunt", "explore", "Броня Титана", "Колоссальный титан", "Дракон", "stats", "save_game", "delete_save", "Назад"],
+        "Казармы": ["train_odm", "train_normal", "buy_odm", "buy_gas", "buy_blades", "stats", "save_game", "delete_save", "Назад"],
+        "Тренировочная площадка": ["train_odm", "train_normal", "stats", "save_game", "delete_save", "Назад"],
+        "Торговый район": ["Магазин оружия", "Аптека", "Магазин ODM", "stats", "save_game", "delete_save", "Назад"],
+        "Магазин оружия": ["buy_sword", "buy_shield", "stats", "save_game", "delete_save", "Назад"],
+        "Аптека": ["buy_potion", "stats", "save_game", "delete_save", "Назад"],
+        "Магазин ODM": ["buy_gas", "buy_blades", "stats", "save_game", "delete_save", "Назад"],
+        "Центральная площадь": ["rest", "daily", "stats", "save_game", "delete_save", "Назад"],
+        "Госпиталь": ["heal", "stats", "save_game", "delete_save", "Назад"],
+        "Лаборатория": ["Сдать трофеи", "stats", "save_game", "delete_save", "Назад"],
+        "Королевский дворец": ["Получить награду", "stats", "save_game", "delete_save", "Назад"],
+        "Рынок Сины": ["Продать травы", "stats", "save_game", "delete_save", "Назад"],
+        "Храм воинов": ["Благословение", "stats", "save_game", "delete_save", "Назад"],
+        "Дом Аккерманов": ["talk_mikasa", "mikasa_status", "summon_mikasa", "stats", "save_game", "delete_save", "Назад"]
     };
     
     const actionNames = {
-        "stats": "📊 Характеристики", "inventory": "🎒 Инвентарь", "save_game": "💾 Сохранить",
+        "stats": "📊 Характеристики", "inventory": "🎒 Инвентарь", "save_game": "💾 Сохранить", "delete_save": "🗑️ Удалить сохранение",
         "hunt": "🎯 Охота на титанов", "explore": "🔍 Исследовать лес",
         "train_odm": "🎯 Тренировка с ODM", "train_normal": "💪 Без ODM",
         "buy_odm": "🛡️ Купить ODM (100g)", "buy_gas": "⛽ Купить газ (20g)", "buy_blades": "🔪 Купить лезвия (10g)",
@@ -113,7 +182,7 @@ function renderLocationButtons() {
         "Благословение": "🙏 Благословение (50g)", "Сдать трофеи": "🎖️ Сдать трофеи"
     };
     
-    const acts = buttonsMap[currentLocation] || ["Стена Мария", "stats", "save_game"];
+    const acts = buttonsMap[currentLocation] || ["Стена Мария", "stats", "save_game", "delete_save"];
     const grid = document.createElement('div');
     grid.className = 'button-grid';
     
@@ -122,6 +191,7 @@ function renderLocationButtons() {
         btn.className = 'game-btn';
         if (action === "hunt" || action.includes("Титан") || action.includes("Дракон")) btn.classList.add('btn-danger');
         if (action === "rest" || action === "heal") btn.classList.add('btn-warning');
+        if (action === "delete_save") btn.classList.add('btn-danger');
         btn.textContent = actionNames[action] || action;
         btn.onclick = () => sendAction(action);
         grid.appendChild(btn);
@@ -159,6 +229,11 @@ async function sendAction(action) {
         return;
     }
     
+    if (action === "delete_save") {
+        deleteSave();
+        return;
+    }
+    
     if (!sessionId) {
         addMessage(`❌ Сначала создайте персонажа!`, 'error');
         return;
@@ -171,6 +246,15 @@ async function sendAction(action) {
             body: JSON.stringify({ session_id: sessionId, action: action, battle_id: currentBattleId })
         });
         const data = await response.json();
+        
+        // Если сессия не найдена - пробуем восстановить
+        if (data.error && data.error.includes('Сессия не найдена')) {
+            addMessage(`⚠️ Сессия устарела. Пожалуйста, создайте персонажа заново.`, 'error');
+            clearSave();
+            updateStats();
+            renderLocationButtons();
+            return;
+        }
         
         if (data.error) { addMessage(`❌ ${data.error}`, 'error'); return; }
         
@@ -311,11 +395,6 @@ function addChatMessage(type, text) {
 }
 
 function connectChat() {
-    if (!CHAT_WS_URL || CHAT_WS_URL === 'wss://rpg-chat-xxxx.onrender.com') {
-        addChatMessage('system', '⚠️ Чат не настроен. Замените CHAT_WS_URL на ваш URL!');
-        return;
-    }
-    
     chatSocket = new WebSocket(CHAT_WS_URL);
     
     chatSocket.onopen = () => {
@@ -395,7 +474,6 @@ if (!loadGameFromLocal()) {
     addMessage(`💾 Игра будет автоматически сохраняться`, 'system');
 } else {
     addMessage(`💾 Автосохранение включено`, 'system');
-    if (player) playerNameForChat = player.name;
 }
 
 // Подключаем чат
