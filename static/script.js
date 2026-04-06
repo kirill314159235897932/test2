@@ -8,18 +8,12 @@ let player = null;
 let currentLocation = "Стена Мария";
 let inBattle = false;
 let currentBattleId = null;
-
-// Чат
 let chatSocket = null;
 let playerNameForChat = null;
-
-// Кулдауны
 let lastRestTime = null;
 let lastDailyTime = null;
 let lastTrainingTime = null;
 let lastDiceTime = null;
-
-// Донат
 let playerDiamonds = 0;
 let currentPrivilege = null;
 
@@ -29,36 +23,27 @@ const buttonsPanel = document.getElementById('buttonsPanel');
 const statsPanel = document.getElementById('statsPanel');
 const gameInput = document.getElementById('gameInput');
 
-// ============ ФУНКЦИИ СОХРАНЕНИЯ ============
+// ============ СОХРАНЕНИЕ ============
 function saveGameToLocal() {
     if (sessionId && player) {
-        const saveData = { sessionId, player, currentLocation, savedAt: new Date().toISOString() };
-        localStorage.setItem('rpg_save', JSON.stringify(saveData));
+        localStorage.setItem('rpg_save', JSON.stringify({ sessionId, player, currentLocation }));
         addMessage(`💾 Игра сохранена!`, 'victory');
-        return true;
     }
-    return false;
 }
 
 function loadGameFromLocal() {
     const saved = localStorage.getItem('rpg_save');
     if (saved) {
-        try {
-            const saveData = JSON.parse(saved);
-            sessionId = saveData.sessionId;
-            player = saveData.player;
-            currentLocation = saveData.currentLocation || player.location || "Стена Мария";
-            playerNameForChat = player.name;
-            addMessage(`📂 Загрузка сохранения... С возвращением, ${player.name}!`, 'victory');
-            updateStats();
-            renderLocationButtons();
-            setTimeout(() => {
-                addShopButton();
-                updateDiamonds();
-                updateChatPrivilege();
-            }, 500);
-            return true;
-        } catch(e) { console.error(e); clearSave(); }
+        const saveData = JSON.parse(saved);
+        sessionId = saveData.sessionId;
+        player = saveData.player;
+        currentLocation = saveData.currentLocation || player.location || "Стена Мария";
+        playerNameForChat = player.name;
+        addMessage(`📂 Загрузка сохранения... С возвращением, ${player.name}!`, 'victory');
+        updateStats();
+        renderLocationButtons();
+        setTimeout(() => { addShopButton(); updateDiamonds(); updateChatPrivilege(); }, 500);
+        return true;
     }
     return false;
 }
@@ -74,15 +59,15 @@ function clearSave() {
 }
 
 function deleteSave() {
-    if (confirm('🗑️ Вы уверены, что хотите удалить сохранение? Прогресс будет потерян!')) {
+    if (confirm('🗑️ Удалить сохранение?')) {
         clearSave();
-        addMessage(`🗑️ Сохранение удалено! Обновите страницу и создайте нового персонажа.`, 'system');
+        addMessage(`🗑️ Сохранение удалено!`, 'system');
         updateStats();
         renderLocationButtons();
     }
 }
 
-// ============ ФУНКЦИИ ИГРЫ ============
+// ============ ИГРА ============
 function addMessage(text, type = 'system') {
     const msg = document.createElement('div');
     msg.className = `message msg-${type}`;
@@ -93,7 +78,7 @@ function addMessage(text, type = 'system') {
 
 function updateStats() {
     if (!player) {
-        statsPanel.innerHTML = '<span class="stat">👤 Создайте персонажа</span><span class="stat">💾 Нет сохранения</span>';
+        statsPanel.innerHTML = '<span class="stat">👤 Создайте персонажа</span>';
         return;
     }
     statsPanel.innerHTML = `
@@ -105,7 +90,6 @@ function updateStats() {
         <span class="stat">🗡️ ${player.attack}</span>
         <span class="stat">🛡️ ${player.defense}</span>
         <span class="stat">🏃 ${player.agility}</span>
-        <span class="stat">💾 Сохранено</span>
     `;
 }
 
@@ -137,7 +121,7 @@ function renderLocationButtons() {
         "stats": "📊 Характеристики", "inventory": "🎒 Инвентарь", "save_game": "💾 Сохранить", "delete_save": "🗑️ Удалить сохранение",
         "hunt": "🎯 Охота на титанов", "explore": "🔍 Исследовать лес", "Боссы": "⚔️ Боссы",
         "Броня Титана": "🛡️ Броня Титана (10+)", "Колоссальный титан": "🔥 Колоссальный титан (20+)", "Дракон": "🐉 Дракон (30+)",
-        "train_odm": "🎯 Тренировка с ODM", "train_normal": "💪 Без ODM", "Улучшить ODM": "⚡ Улучшить ODM",
+        "train_odm": "🎯 Тренировка с ODM", "train_normal": "💪 Без ODM",
         "buy_odm": "🛡️ Купить ODM (100g)", "buy_gas": "⛽ Купить газ (20g)", "buy_blades": "🔪 Купить лезвия (10g)",
         "buy_battery": "⚡ Батарея ODM (50g)", "buy_repair_kit": "🔧 Ремкомплект (30g)",
         "buy_sword": "🗡️ Купить меч (50g)", "buy_shield": "🛡️ Купить щит (30g)", "buy_bow": "🏹 Купить лук (70g)", "buy_crossbow": "🎯 Купить арбалет (100g)",
@@ -183,13 +167,10 @@ function renderLocationButtons() {
 function renderBattleButtons() {
     const grid = document.createElement('div');
     grid.className = 'button-grid';
-    const actions = ["battle_attack", "battle_heal", "battle_flee"];
-    const names = {"battle_attack": "⚔️ Атаковать", "battle_heal": "❤️ Использовать зелье", "battle_flee": "🏃 Сбежать"};
-    
-    actions.forEach(action => {
+    ["battle_attack", "battle_heal", "battle_flee"].forEach(action => {
         const btn = document.createElement('button');
         btn.className = 'game-btn btn-danger';
-        btn.textContent = names[action];
+        btn.textContent = {"battle_attack": "⚔️ Атаковать", "battle_heal": "❤️ Использовать зелье", "battle_flee": "🏃 Сбежать"}[action];
         btn.onclick = () => sendAction(action);
         grid.appendChild(btn);
     });
@@ -198,9 +179,6 @@ function renderBattleButtons() {
 }
 
 async function sendAction(action) {
-    console.log('📤 sendAction вызван с action:', action);
-    
-    // НАВИГАЦИЯ ПО ЛОКАЦИЯМ
     const locationNames = ["Стена Мария", "Стена Роза", "Стена Сина", "За стеной", "Казармы", "Тренировочная площадка", "Торговый район", "Магазин оружия", "Аптека", "Магазин ODM", "Черный рынок", "Центральная площадь", "Таверна", "Госпиталь", "Лаборатория", "Королевский дворец", "Рынок Сины", "Храм воинов", "Дом Аккерманов", "Боссы"];
     
     if (locationNames.includes(action)) {
@@ -218,120 +196,76 @@ async function sendAction(action) {
         else if (["Лаборатория", "Королевский дворец", "Рынок Сины", "Храм воинов"].includes(currentLocation)) currentLocation = "Стена Сина";
         else if (currentLocation === "Госпиталь") currentLocation = "Стена Роза";
         else currentLocation = "Стена Мария";
-        
         addMessage(`📍 Возврат в ${currentLocation}`, 'system');
         renderLocationButtons();
         if (player) { player.location = currentLocation; saveGameToLocal(); }
         return;
     }
     
-    // Сохранение и удаление
-    if (action === "save_game") {
-        if (sessionId && player) { saveGameToLocal(); }
-        else { addMessage(`❌ Нечего сохранять - создайте персонажа!`, 'error'); }
-        return;
-    }
+    if (action === "save_game") { if (sessionId && player) saveGameToLocal(); else addMessage(`❌ Создайте персонажа!`, 'error'); return; }
     if (action === "delete_save") { deleteSave(); return; }
     
-    // Отдых
     if (action === "rest") {
         if (!lastRestTime || Date.now() - lastRestTime > 300000) {
-            if (player) {
-                player.health = player.max_health;
-                player.energy = player.max_energy;
-                if (player.odm_gear) { player.gas_level = 100; player.blades_count = 6; }
-            }
+            if (player) { player.health = player.max_health; player.energy = player.max_energy; if (player.odm_gear) { player.gas_level = 100; player.blades_count = 6; } }
             lastRestTime = Date.now();
-            addMessage(`😴 Вы отдохнули! Здоровье и энергия восстановлены.`, 'victory');
+            addMessage(`😴 Отдохнули!`, 'victory');
             updateStats(); saveGameToLocal();
-        } else {
-            const remaining = Math.ceil((300000 - (Date.now() - lastRestTime)) / 60000);
-            addMessage(`⏳ Отдых возможен через ${remaining} минут`, 'error');
-        }
+        } else addMessage(`⏳ Отдых через ${Math.ceil((300000 - (Date.now() - lastRestTime)) / 60000)} мин`, 'error');
         return;
     }
     
-    // Ежедневная награда
     if (action === "daily") {
         if (!lastDailyTime || Date.now() - lastDailyTime > 86400000) {
-            if (player) {
-                const reward = Math.floor(Math.random() * 100) + 50;
-                player.gold += reward;
-            }
+            if (player) { const reward = Math.floor(Math.random() * 100) + 50; player.gold += reward; }
             lastDailyTime = Date.now();
             addMessage(`🎁 Ежедневная награда! +${reward} золота`, 'victory');
             updateStats(); saveGameToLocal();
-        } else {
-            const remaining = Math.ceil((86400000 - (Date.now() - lastDailyTime)) / 3600000);
-            addMessage(`⏳ Следующая награда через ${remaining} часов`, 'error');
-        }
+        } else addMessage(`⏳ Награда через ${Math.ceil((86400000 - (Date.now() - lastDailyTime)) / 3600000)} часов`, 'error');
         return;
     }
     
-    // Лечение в госпитале
     if (action === "heal" && player && player.gold >= 10) {
         player.gold -= 10;
         player.health = player.max_health;
-        addMessage(`🏥 Вылечены! Здоровье: ${player.health}/${player.max_health}`, 'victory');
+        addMessage(`🏥 Вылечены!`, 'victory');
         updateStats(); saveGameToLocal();
         return;
     }
     
-    // Разговоры с горожанами
     if (action === "talk_citizens") {
-        const dialogues = ["Горожанин: 'Титаны становятся все опаснее...'", "Горожанин: 'Разведкорпус готовит новую экспедицию.'", "Горожанин: 'Береги себя за стеной!'"];
-        addMessage(`🗣️ ${dialogues[Math.floor(Math.random() * dialogues.length)]}`, 'system');
+        addMessage(`🗣️ ${["Горожанин: 'Титаны становятся все опаснее...'", "Горожанин: 'Разведкорпус готовит новую экспедицию.'", "Горожанин: 'Береги себя за стеной!'"][Math.floor(Math.random() * 3)]}`, 'system');
         return;
     }
     
-    // Таверна - игра в кости
     if (action === "play_dice" && player && player.gold >= 10) {
-        if (lastDiceTime && Date.now() - lastDiceTime < 5000) {
-            addMessage(`⏳ Подождите 5 секунд перед следующей игрой!`, 'error');
-            return;
-        }
+        if (lastDiceTime && Date.now() - lastDiceTime < 5000) { addMessage(`⏳ Подождите 5 секунд!`, 'error'); return; }
         player.gold -= 10;
         const playerDice = Math.floor(Math.random() * 6) + 1;
         const tavernDice = Math.floor(Math.random() * 6) + 1;
         lastDiceTime = Date.now();
-        
-        if (playerDice > tavernDice) {
-            const win = Math.floor(Math.random() * 15) + 10;
-            player.gold += win;
-            addMessage(`🎲 ВЫ ВЫИГРАЛИ! Ваша кость: ${playerDice}, кость таверны: ${tavernDice}. Выигрыш: ${win} золота!`, 'victory');
-        } else if (playerDice < tavernDice) {
-            addMessage(`🎲 ВЫ ПРОИГРАЛИ! Ваша кость: ${playerDice}, кость таверны: ${tavernDice}. Потеряно: 10 золота.`, 'error');
-        } else {
-            player.gold += 5;
-            addMessage(`🎲 НИЧЬЯ! Ваша кость: ${playerDice}, кость таверны: ${tavernDice}. Возвращено 5 золота.`, 'system');
-        }
+        if (playerDice > tavernDice) { const win = Math.floor(Math.random() * 15) + 10; player.gold += win; addMessage(`🎲 ВЫИГРАЛИ! +${win} золота`, 'victory'); }
+        else if (playerDice < tavernDice) addMessage(`🎲 ПРОИГРАЛИ! -10 золота`, 'error');
+        else { player.gold += 5; addMessage(`🎲 НИЧЬЯ! +5 золота`, 'system'); }
         updateStats(); saveGameToLocal();
         return;
     }
     
-    // Сплетни
     if (action === "gossip") {
-        const rumors = ["Говорят, что в лесу видели странного титана...", "Шепчутся, что кто-то нашел древний артефакт.", "Королевский дворец готовит большую экспедицию.", "В лаборатории Ханджи проводят опасные эксперименты."];
-        addMessage(`🗣️ ${rumors[Math.floor(Math.random() * rumors.length)]}`, 'system');
+        addMessage(`🗣️ ${["Говорят, что в лесу видели странного титана...", "Шепчутся, что кто-то нашел древний артефакт.", "Королевский дворец готовит большую экспедицию."][Math.floor(Math.random() * 3)]}`, 'system');
         return;
     }
     
-    // Выпить эля
     if (action === "drink_beer" && player && player.gold >= 5) {
         player.gold -= 5;
         player.energy = Math.min(player.max_energy, player.energy + 10);
-        addMessage(`🍺 Вы выпили эль! Энергия +10`, 'victory');
+        addMessage(`🍺 Энергия +10`, 'victory');
         updateStats(); saveGameToLocal();
         return;
     }
     
-    // Если нет сессии - отправляем на сервер
-    if (!sessionId) {
-        addMessage(`❌ Сначала создайте персонажа! Введите имя и нажмите Enter.`, 'error');
-        return;
-    }
+    if (!sessionId) { addMessage(`❌ Создайте персонажа!`, 'error'); return; }
     
-    // Отправка на сервер
     try {
         const response = await fetch(`${API_BASE_URL}/api/action`, {
             method: 'POST',
@@ -340,11 +274,7 @@ async function sendAction(action) {
         });
         const data = await response.json();
         
-        if (data.error && data.error.includes('Сессия не найдена')) {
-            addMessage(`⚠️ Сессия устарела. Пожалуйста, создайте персонажа заново.`, 'error');
-            clearSave(); updateStats(); renderLocationButtons();
-            return;
-        }
+        if (data.error && data.error.includes('Сессия не найдена')) { addMessage(`⚠️ Сессия устарела. Создайте нового персонажа.`, 'error'); clearSave(); updateStats(); renderLocationButtons(); return; }
         if (data.error) { addMessage(`❌ ${data.error}`, 'error'); return; }
         
         if (data.location) {
@@ -365,27 +295,11 @@ async function sendAction(action) {
             renderBattleButtons(); return;
         }
         
-        if (data.victory) {
+        if (data.victory || data.defeat || data.fled) {
             inBattle = false; currentBattleId = null;
-            addMessage(`🎉 ${data.message}`, 'victory');
+            addMessage(data.victory ? `🎉 ${data.message}` : (data.defeat ? `💀 ${data.message}` : `🏃 ${data.message}`), data.victory ? 'victory' : (data.defeat ? 'error' : 'system'));
             if (data.player) player = data.player;
-            updateStats(); renderLocationButtons(); saveGameToLocal();
-            return;
-        }
-        
-        if (data.defeat) {
-            inBattle = false; currentBattleId = null;
-            addMessage(`💀 ${data.message}`, 'error');
-            if (data.player) player = data.player;
-            if (player) currentLocation = player.location || "Стена Мария";
-            updateStats(); renderLocationButtons(); saveGameToLocal();
-            return;
-        }
-        
-        if (data.fled) {
-            inBattle = false; currentBattleId = null;
-            addMessage(`🏃 ${data.message}`, 'system');
-            if (data.player) player = data.player;
+            if (player && data.defeat) currentLocation = player.location || "Стена Мария";
             updateStats(); renderLocationButtons(); saveGameToLocal();
             return;
         }
@@ -399,58 +313,25 @@ async function sendAction(action) {
             return;
         }
         
-        if (data.success) {
-            addMessage(`✅ ${data.message}`, 'victory');
-            if (data.player) player = data.player;
-            updateStats(); saveGameToLocal();
-            return;
-        }
-        
-        if (data.stats) {
-            const p = data.stats;
-            addMessage(`📊 ХАРАКТЕРИСТИКИ ${p.name}\n❤️ Здоровье: ${p.health}/${p.max_health}\n⚡ Энергия: ${p.energy}/${p.max_energy}\n⭐ Уровень: ${p.level}\n📈 Опыт: ${p.exp}/${p.max_exp}\n⚔️ Атака: ${p.attack}\n🛡️ Защита: ${p.defense}\n🏃 Ловкость: ${p.agility}\n💰 Золото: ${p.gold}\n📍 Локация: ${p.location}`, 'system');
-            return;
-        }
-        
-        if (data.inventory) {
-            let text = "🎒 ИНВЕНТАРЬ:\n";
-            if (data.inventory.length === 0) text += "Пусто";
-            else {
-                const counts = {};
-                data.inventory.forEach(item => counts[item] = (counts[item] || 0) + 1);
-                for (const [item, count] of Object.entries(counts)) text += `• ${item}${count > 1 ? ` x${count}` : ''}\n`;
-            }
-            if (data.player) text += `\n⛽ Газ ODM: ${data.player.gas_level}/100\n🔪 Лезвия: ${data.player.blades_count}/6`;
-            addMessage(text, 'system'); return;
-        }
-        
-        if (data.mikasa_status) {
-            const levelText = ["Незнакомец", "Знакомый", "Товарищ", "Друг", "Близкий друг", "Доверенное лицо"];
-            addMessage(`❤️ ОТНОШЕНИЯ С МИКАСОЙ\nУровень: ${levelText[data.level]} (${data.level}/5)\nПрогресс: ${data.relationship}/100\nВ команде: ${data.has_companion ? "✅ Да" : "❌ Нет"}`, 'system');
-            return;
-        }
+        if (data.success) { addMessage(`✅ ${data.message}`, 'victory'); if (data.player) player = data.player; updateStats(); saveGameToLocal(); return; }
+        if (data.stats) { const p = data.stats; addMessage(`📊 ХАРАКТЕРИСТИКИ ${p.name}\n❤️ Здоровье: ${p.health}/${p.max_health}\n⚡ Энергия: ${p.energy}/${p.max_energy}\n⭐ Уровень: ${p.level}\n📈 Опыт: ${p.exp}/${p.max_exp}\n⚔️ Атака: ${p.attack}\n🛡️ Защита: ${p.defense}\n🏃 Ловкость: ${p.agility}\n💰 Золото: ${p.gold}\n📍 Локация: ${p.location}`, 'system'); return; }
+        if (data.inventory) { let text = "🎒 ИНВЕНТАРЬ:\n"; if (data.inventory.length === 0) text += "Пусто"; else { const counts = {}; data.inventory.forEach(item => counts[item] = (counts[item] || 0) + 1); for (const [item, count] of Object.entries(counts)) text += `• ${item}${count > 1 ? ` x${count}` : ''}\n`; } if (data.player) text += `\n⛽ Газ ODM: ${data.player.gas_level}/100\n🔪 Лезвия: ${data.player.blades_count}/6`; addMessage(text, 'system'); return; }
+        if (data.mikasa_status) { addMessage(`❤️ ОТНОШЕНИЯ С МИКАСОЙ\nУровень: ${["Незнакомец","Знакомый","Товарищ","Друг","Близкий друг","Доверенное лицо"][data.level]} (${data.level}/5)\nПрогресс: ${data.relationship}/100\nВ команде: ${data.has_companion ? "✅ Да" : "❌ Нет"}`, 'system'); return; }
     } catch (error) {
-        addMessage(`❌ Ошибка: ${error.message}. Сервер: ${API_BASE_URL}`, 'error');
-        console.error(error);
+        addMessage(`❌ Ошибка: ${error.message}`, 'error');
     }
 }
 
 async function createCharacter(name) {
     addMessage(`📡 Создание персонажа "${name}"...`, 'system');
     try {
-        const response = await fetch(`${API_BASE_URL}/api/create`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: name })
-        });
+        const response = await fetch(`${API_BASE_URL}/api/create`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name }) });
         const data = await response.json();
         if (data.success) {
             sessionId = data.session_id;
             player = data.player;
             currentLocation = player.location;
             playerNameForChat = name;
-            if (!player.titan_kills) player.titan_kills = {};
-            if (!player.quests) player.quests = {};
             addMessage(`✨ Создан персонаж ${player.name}!`, 'victory');
             updateStats();
             renderLocationButtons();
@@ -458,31 +339,11 @@ async function createCharacter(name) {
             addShopButton();
             await updateDiamonds();
             await updateChatPrivilege();
-        } else {
-            addMessage(`❌ ${data.error}`, 'error');
-        }
-    } catch (error) {
-        addMessage(`❌ Ошибка: ${error.message}. Сервер доступен? ${API_BASE_URL}`, 'error');
-        console.error(error);
-    }
+        } else addMessage(`❌ ${data.error}`, 'error');
+    } catch (error) { addMessage(`❌ Ошибка: ${error.message}`, 'error'); }
 }
 
-function levelUp() {
-    player.level++;
-    player.exp -= player.max_exp;
-    player.max_exp = Math.floor(player.max_exp * 1.5);
-    player.max_health += 20;
-    player.health = player.max_health;
-    player.max_energy += 10;
-    player.energy = player.max_energy;
-    player.attack += 5;
-    player.defense += 3;
-    player.agility += 2;
-    addMessage(`⭐ НОВЫЙ УРОВЕНЬ ${player.level}!`, 'victory');
-    saveGameToLocal();
-}
-
-// ============ ФУНКЦИИ ЧАТА ============
+// ============ ЧАТ ============
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -507,7 +368,7 @@ function connectChat() {
         try {
             const data = JSON.parse(event.data);
             if (data.type === 'message') {
-                addChatMessage('player', `<span class="name">${escapeHtml(data.name)}</span>: ${escapeHtml(data.text)} <span class="time">${data.time}</span>`);
+                addChatMessage('player', `<span class="name">${data.name}</span>: ${escapeHtml(data.text)} <span class="time">${data.time}</span>`);
             } else if (data.type === 'online') {
                 const onlineSpan = document.getElementById('chatOnlineCount');
                 if (onlineSpan) onlineSpan.innerText = `(${data.count})`;
@@ -519,9 +380,7 @@ function connectChat() {
         addChatMessage('system', '🔌 Отключено от чата. Переподключение...');
         setTimeout(connectChat, 5000);
     };
-    setTimeout(() => {
-        if (playerNameForChat) updateChatPrivilege();
-    }, 2000);
+    setTimeout(() => { if (playerNameForChat) updateChatPrivilege(); }, 2000);
 }
 
 function sendChatMessage() {
@@ -529,273 +388,125 @@ function sendChatMessage() {
     if (!input) return;
     const text = input.value.trim();
     if (!text) return;
-    if (!chatSocket || chatSocket.readyState !== WebSocket.OPEN) {
-        addChatMessage('system', '❌ Чат не подключён');
-        return;
-    }
+    if (!chatSocket || chatSocket.readyState !== WebSocket.OPEN) { addChatMessage('system', '❌ Чат не подключён'); return; }
     if (!playerNameForChat && player) playerNameForChat = player.name;
-    if (!playerNameForChat) {
-        addChatMessage('system', '❌ Сначала создайте персонажа');
-        return;
-    }
+    if (!playerNameForChat) { addChatMessage('system', '❌ Сначала создайте персонажа'); return; }
     chatSocket.send(JSON.stringify({ name: playerNameForChat, text: text.substring(0, 100) }));
     input.value = '';
 }
 
 function toggleChat() {
-    const window = document.getElementById('chatWindow');
-    if (window) window.classList.toggle('collapsed');
+    document.getElementById('chatWindow').classList.toggle('collapsed');
 }
 
-// ============ ДОНАТ-СИСТЕМА ============
-
+// ============ ДОНАТ ============
 async function updateDiamonds() {
     if (!sessionId) return;
     try {
-        const response = await fetch(`${API_BASE_URL}/api/diamonds/get`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId })
-        });
+        const response = await fetch(`${API_BASE_URL}/api/diamonds/get`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId }) });
         const data = await response.json();
         playerDiamonds = data.diamonds || 0;
-        updateDiamondsDisplay();
-    } catch(e) { console.error('Ошибка получения алмазов:', e); }
-}
-
-function updateDiamondsDisplay() {
-    let diamondsSpan = document.getElementById('diamondsDisplay');
-    if (!diamondsSpan && player) {
-        const statsPanelElem = document.getElementById('statsPanel');
-        if (statsPanelElem) {
-            diamondsSpan = document.createElement('span');
-            diamondsSpan.id = 'diamondsDisplay';
-            diamondsSpan.className = 'stat';
-            statsPanelElem.appendChild(diamondsSpan);
+        let ds = document.getElementById('diamondsDisplay');
+        if (!ds && player) {
+            ds = document.createElement('span');
+            ds.id = 'diamondsDisplay';
+            ds.className = 'stat';
+            document.getElementById('statsPanel').appendChild(ds);
         }
-    }
-    if (diamondsSpan) {
-        diamondsSpan.innerHTML = `💎 ${playerDiamonds}`;
-    }
+        if (ds) ds.innerHTML = `💎 ${playerDiamonds}`;
+    } catch(e) { console.error(e); }
 }
 
 async function showPrivilegeShop() {
-    const response = await fetch(`${API_BASE_URL}/api/privileges/list`);
-    const data = await response.json();
-    const privileges = data.privileges;
-    
-    const menuHtml = `
-    <div id="shopModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:1001; display:flex; justify-content:center; align-items:center;">
-        <div style="background:#1a1a2e; border-radius:20px; padding:20px; max-width:450px; width:90%; border:2px solid #ffd700;">
-            <h2 style="color:#ffd700; text-align:center;">💎 МАГАЗИН ПРИВИЛЕГИЙ</h2>
-            <p style="color:#aaa; text-align:center;">Ваши алмазы: <span style="color:#ffd700; font-size:1.5rem;">💎 ${playerDiamonds}</span></p>
-            <hr style="border-color:#333;">
-            ${Object.entries(privileges).map(([id, priv]) => `
-                <div class="shop-item" data-id="${id}" style="background:#2c2c3e; margin:10px 0; padding:15px; border-radius:15px; cursor:pointer; transition:all 0.2s;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <div style="font-size:1.2rem;">${priv.name}</div>
-                            <div style="font-size:0.8rem; color:#aaa;">на ${priv.duration} дней</div>
-                        </div>
-                        <div style="color:#ffd700; font-weight:bold;">💎 ${priv.price}</div>
-                    </div>
-                </div>
-            `).join('')}
-            <hr style="border-color:#333;">
-            <button id="addDiamondsBtn" style="width:100%; margin:10px 0; padding:12px; background:linear-gradient(135deg,#ffd700,#ffaa00); border:none; border-radius:10px; cursor:pointer; font-weight:bold;">💎 ПОПОЛНИТЬ АЛМАЗЫ</button>
-            <button id="closeShopModal" style="width:100%; margin-top:10px; padding:10px; background:#2c2c3e; border:1px solid #ff4444; color:#ff8888; border-radius:10px; cursor:pointer;">Закрыть</button>
-        </div>
-    </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', menuHtml);
-    
-    document.querySelectorAll('.shop-item').forEach(item => {
-        item.addEventListener('click', async () => {
-            const privilegeId = item.dataset.id;
-            await buyPrivilege(privilegeId);
-        });
-    });
-    
-    document.getElementById('addDiamondsBtn').addEventListener('click', () => {
-        document.getElementById('shopModal').remove();
-        showDonateOptions();
-    });
-    
-    document.getElementById('closeShopModal').addEventListener('click', () => {
-        document.getElementById('shopModal').remove();
-    });
+    const res = await fetch(`${API_BASE_URL}/api/privileges/list`);
+    const privileges = (await res.json()).privileges;
+    const html = `<div id="shopModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:1001; display:flex; justify-content:center; align-items:center;"><div style="background:#1a1a2e; border-radius:20px; padding:20px; max-width:450px; width:90%; border:2px solid #ffd700;"><h2 style="color:#ffd700; text-align:center;">💎 МАГАЗИН ПРИВИЛЕГИЙ</h2><p style="color:#aaa; text-align:center;">Ваши алмазы: <span style="color:#ffd700; font-size:1.5rem;">💎 ${playerDiamonds}</span></p><hr>${Object.entries(privileges).map(([id, p]) => `<div class="shop-item" data-id="${id}" style="background:#2c2c3e; margin:10px 0; padding:15px; border-radius:15px; cursor:pointer;"><div style="display:flex; justify-content:space-between;"><div><div style="font-size:1.2rem;">${p.name}</div><div style="font-size:0.8rem; color:#aaa;">на ${p.duration} дней</div></div><div style="color:#ffd700;">💎 ${p.price}</div></div></div>`).join('')}<hr><button id="addDiamondsBtn" style="width:100%; margin:10px 0; padding:12px; background:linear-gradient(135deg,#ffd700,#ffaa00); border:none; border-radius:10px; cursor:pointer; font-weight:bold;">💎 ПОПОЛНИТЬ АЛМАЗЫ</button><button id="closeShopModal" style="width:100%; margin-top:10px; padding:10px; background:#2c2c3e; border:1px solid #ff4444; color:#ff8888; border-radius:10px; cursor:pointer;">Закрыть</button></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    document.querySelectorAll('.shop-item').forEach(item => item.addEventListener('click', async () => { await buyPrivilege(item.dataset.id); }));
+    document.getElementById('addDiamondsBtn').onclick = () => { document.getElementById('shopModal').remove(); showDonateOptions(); };
+    document.getElementById('closeShopModal').onclick = () => document.getElementById('shopModal').remove();
 }
 
 async function showDonateOptions() {
-    const options = [
-        { rub: 100, diamonds: 100, bonus: "0%" },
-        { rub: 300, diamonds: 330, bonus: "+10%" },
-        { rub: 500, diamonds: 600, bonus: "+20%" },
-        { rub: 1000, diamonds: 1300, bonus: "+30%" }
-    ];
-    
-    const menuHtml = `
-    <div id="donateModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:1001; display:flex; justify-content:center; align-items:center;">
-        <div style="background:#1a1a2e; border-radius:20px; padding:20px; max-width:400px; width:90%; border:2px solid #ffd700;">
-            <h2 style="color:#ffd700; text-align:center;">💎 ПОПОЛНИТЬ АЛМАЗЫ</h2>
-            <p style="color:#aaa; text-align:center;">Выберите сумму:</p>
-            ${options.map(opt => `
-                <div class="donate-option" data-rub="${opt.rub}" data-diamonds="${opt.diamonds}" style="background:#2c2c3e; margin:10px; padding:15px; border-radius:15px; cursor:pointer; transition:all 0.2s;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <span style="font-size:1.2rem;">${opt.rub} ₽</span>
-                            <div style="font-size:0.8rem; color:#88ff88;">+${opt.bonus} бонус</div>
-                        </div>
-                        <div style="color:#ffd700; font-weight:bold;">💎 ${opt.diamonds}</div>
-                    </div>
-                </div>
-            `).join('')}
-            <button id="closeDonateModal" style="width:100%; margin-top:15px; padding:10px; background:#2c2c3e; border:1px solid #ff4444; color:#ff8888; border-radius:10px; cursor:pointer;">Назад</button>
-        </div>
-    </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', menuHtml);
-    
-    document.querySelectorAll('.donate-option').forEach(opt => {
-        opt.addEventListener('click', async () => {
-            const rub = parseInt(opt.dataset.rub);
-            await createDonation(rub);
-        });
-    });
-    
-    document.getElementById('closeDonateModal').addEventListener('click', () => {
-        document.getElementById('donateModal').remove();
-        showPrivilegeShop();
-    });
+    const html = `<div id="donateModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:1001; display:flex; justify-content:center; align-items:center;"><div style="background:#1a1a2e; border-radius:20px; padding:20px; max-width:400px; width:90%; border:2px solid #ffd700;"><h2 style="color:#ffd700; text-align:center;">💎 ПОПОЛНИТЬ АЛМАЗЫ</h2><p style="color:#aaa; text-align:center;">Выберите сумму:</p>${[{rub:100,diamonds:100,bonus:"0%"},{rub:300,diamonds:330,bonus:"+10%"},{rub:500,diamonds:600,bonus:"+20%"},{rub:1000,diamonds:1300,bonus:"+30%"}].map(opt => `<div class="donate-option" data-rub="${opt.rub}" style="background:#2c2c3e; margin:10px; padding:15px; border-radius:15px; cursor:pointer;"><div style="display:flex; justify-content:space-between;"><div><span style="font-size:1.2rem;">${opt.rub} ₽</span><div style="font-size:0.8rem; color:#88ff88;">${opt.bonus} бонус</div></div><div style="color:#ffd700;">💎 ${opt.diamonds}</div></div></div>`).join('')}<button id="closeDonateModal" style="width:100%; margin-top:15px; padding:10px; background:#2c2c3e; border:1px solid #ff4444; color:#ff8888; border-radius:10px; cursor:pointer;">Назад</button></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    document.querySelectorAll('.donate-option').forEach(opt => opt.addEventListener('click', async () => { await createDonation(parseInt(opt.dataset.rub)); }));
+    document.getElementById('closeDonateModal').onclick = () => { document.getElementById('donateModal').remove(); showPrivilegeShop(); };
 }
 
 async function createDonation(amount) {
     addMessage(`💎 Создание платежа на ${amount} ₽...`, 'system');
-    
     try {
-        const response = await fetch(`${API_BASE_URL}/api/donate/create`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId, amount: amount })
-        });
+        const response = await fetch(`${API_BASE_URL}/api/donate/create`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId, amount: amount }) });
         const data = await response.json();
-        
         if (data.success) {
-            addMessage(`✅ Платёж создан! Вы получите ${data.diamonds} алмазов.`, 'victory');
-            
-            if (confirm('Это тестовый режим. Имитировать оплату?')) {
-                const testResponse = await fetch(`${API_BASE_URL}/api/donate/test/${data.donation_id}`);
-                const testData = await testResponse.json();
-                if (testData.success) {
-                    addMessage(`✨ ${testData.message}`, 'victory');
-                    await updateDiamonds();
-                }
-            } else {
-                addMessage(`🔗 После оплаты алмазы начислятся автоматически.`, 'system');
-                window.open(data.donation_url, '_blank');
-            }
-            
+            addMessage(`✅ Платёж создан!`, 'victory');
+            if (confirm('Имитировать оплату?')) {
+                const testRes = await fetch(`${API_BASE_URL}/api/donate/test/${data.donation_id}`);
+                const testData = await testRes.json();
+                if (testData.success) { addMessage(`✨ ${testData.message}`, 'victory'); await updateDiamonds(); }
+            } else window.open(data.donation_url, '_blank');
             document.getElementById('donateModal')?.remove();
-        } else {
-            addMessage(`❌ ${data.error}`, 'error');
-        }
-    } catch (error) {
-        addMessage(`❌ Ошибка: ${error.message}`, 'error');
-    }
+        } else addMessage(`❌ ${data.error}`, 'error');
+    } catch(e) { addMessage(`❌ Ошибка: ${e.message}`, 'error'); }
 }
 
 async function buyPrivilege(privilegeType) {
     addMessage(`💎 Покупка привилегии...`, 'system');
-    
     try {
-        const response = await fetch(`${API_BASE_URL}/api/privileges/buy`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId, privilege_type: privilegeType })
-        });
+        const response = await fetch(`${API_BASE_URL}/api/privileges/buy`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId, privilege_type: privilegeType }) });
         const data = await response.json();
-        
         if (data.success) {
             addMessage(`✅ ${data.message}`, 'victory');
             playerDiamonds = data.diamonds;
             updateDiamondsDisplay();
             await updateChatPrivilege();
             document.getElementById('shopModal')?.remove();
-        } else {
-            addMessage(`❌ ${data.error}`, 'error');
-        }
-    } catch (error) {
-        addMessage(`❌ Ошибка: ${error.message}`, 'error');
-    }
+        } else addMessage(`❌ ${data.error}`, 'error');
+    } catch(e) { addMessage(`❌ Ошибка: ${e.message}`, 'error'); }
 }
 
 async function updateChatPrivilege() {
     if (!playerNameForChat) return;
-    
     try {
-        const response = await fetch(`${API_BASE_URL}/api/privileges/status`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId, player_name: playerNameForChat })
-        });
+        const response = await fetch(`${API_BASE_URL}/api/privileges/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId, player_name: playerNameForChat }) });
         const data = await response.json();
-        
         if (data.privilege && chatSocket && chatSocket.readyState === WebSocket.OPEN) {
-            chatSocket.send(JSON.stringify({
-                type: 'update_privilege',
-                name: playerNameForChat,
-                badge: data.privilege.badge,
-                color: data.privilege.color
-            }));
-            currentPrivilege = data.privilege;
+            chatSocket.send(JSON.stringify({ type: 'update_privilege', name: playerNameForChat, badge: data.privilege.badge, color: data.privilege.color }));
         }
-    } catch(e) {
-        console.error('Ошибка обновления привилегии:', e);
-    }
+    } catch(e) { console.error(e); }
 }
 
 function addShopButton() {
-    const statsPanelElem = document.getElementById('statsPanel');
-    if (statsPanelElem && !document.getElementById('shopBtn')) {
-        const shopBtn = document.createElement('button');
-        shopBtn.id = 'shopBtn';
-        shopBtn.className = 'donate-btn';
-        shopBtn.textContent = '💎 Магазин';
-        shopBtn.onclick = () => showPrivilegeShop();
-        shopBtn.style.display = player ? 'inline-block' : 'none';
-        shopBtn.style.marginLeft = '10px';
-        statsPanelElem.appendChild(shopBtn);
+    const sp = document.getElementById('statsPanel');
+    if (sp && !document.getElementById('shopBtn')) {
+        const btn = document.createElement('button');
+        btn.id = 'shopBtn';
+        btn.className = 'donate-btn';
+        btn.textContent = '💎 Магазин';
+        btn.onclick = () => showPrivilegeShop();
+        btn.style.marginLeft = '10px';
+        sp.appendChild(btn);
     }
 }
 
-// ============ KEEP-ALIVE ============
-let lastPing = 0;
-async function keepAlive() {
-    const now = Date.now();
-    if (now - lastPing < 540000) return;
-    lastPing = now;
-    try {
-        await fetch(`${API_BASE_URL}/api/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'stats', session_id: sessionId }) }).catch(() => {});
-        if (chatSocket && chatSocket.readyState === WebSocket.OPEN) chatSocket.send(JSON.stringify({ type: 'ping' }));
-        else if (chatSocket && chatSocket.readyState !== WebSocket.OPEN) connectChat();
-    } catch(e) {}
+function updateDiamondsDisplay() {
+    let ds = document.getElementById('diamondsDisplay');
+    if (!ds && player) {
+        ds = document.createElement('span');
+        ds.id = 'diamondsDisplay';
+        ds.className = 'stat';
+        document.getElementById('statsPanel').appendChild(ds);
+    }
+    if (ds) ds.innerHTML = `💎 ${playerDiamonds}`;
 }
-setInterval(keepAlive, 540000);
-setTimeout(keepAlive, 60000);
 
 // ============ ЗАПУСК ============
 gameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         const name = gameInput.value.trim();
-        if (name && !sessionId && !player) {
-            createCharacter(name);
-            gameInput.value = '';
-        } else if (name && sessionId) {
-            addMessage(`✅ Персонаж уже создан! Используйте кнопки меню.`, 'system');
-            gameInput.value = '';
-        }
+        if (name && !sessionId && !player) createCharacter(name);
+        gameInput.value = '';
     }
 });
 
@@ -803,10 +514,6 @@ if (!loadGameFromLocal()) {
     renderLocationButtons();
     addMessage(`🖥️ Сервер: ${API_BASE_URL}`, 'system');
     addMessage(`🖱️ Введите имя персонажа и нажмите Enter`, 'system');
-    addMessage(`💾 Игра будет автоматически сохраняться`, 'system');
-} else {
-    addMessage(`💾 Автосохранение включено`, 'system');
 }
 
-setTimeout(() => { connectChat(); }, 1000);
-console.log('🎮 Игра загружена!');
+setTimeout(() => connectChat(), 1000);
