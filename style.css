@@ -1,4 +1,8 @@
-* { box-sizing: border-box; user-select: none; }
+* {
+    box-sizing: border-box;
+    user-select: none;
+}
+
 body {
     background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -9,6 +13,7 @@ body {
     justify-content: center;
     align-items: center;
 }
+
 .game-container {
     max-width: 550px;
     width: 100%;
@@ -17,14 +22,26 @@ body {
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
+
 .game-header {
     background: linear-gradient(135deg, #2c2c3e, #1a1a2e);
     padding: 15px;
     text-align: center;
     border-bottom: 3px solid #ffd700;
 }
-.game-header h1 { color: #ffd700; margin: 0; font-size: 1.4rem; }
-.game-header p { color: #aaa; margin: 5px 0 0; font-size: 0.7rem; }
+
+.game-header h1 {
+    color: #ffd700;
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.game-header p {
+    color: #aaa;
+    margin: 5px 0 0;
+    font-size: 0.7rem;
+}
+
 .stats-panel {
     display: flex;
     flex-wrap: wrap;
@@ -34,7 +51,15 @@ body {
     justify-content: space-around;
     border-bottom: 1px solid #333;
 }
-.stat { background: #2c2c3e; padding: 5px 10px; border-radius: 20px; color: #ffd700; font-size: 0.75rem; }
+
+.stat {
+    background: #2c2c3e;
+    padding: 5px 10px;
+    border-radius: 20px;
+    color: #ffd700;
+    font-size: 0.75rem;
+}
+
 .messages {
     height: 350px;
     overflow-y: auto;
@@ -43,6 +68,7 @@ body {
     flex-direction: column;
     gap: 8px;
 }
+
 .message {
     padding: 10px;
     border-radius: 10px;
@@ -50,11 +76,42 @@ body {
     word-wrap: break-word;
     font-size: 0.85rem;
 }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-.msg-system { background: #2c2c3e; color: #ddd; border-left: 3px solid #ffd700; }
-.msg-combat { background: #3e2c2c; color: #ffaa88; border-left: 3px solid #ff4444; }
-.msg-victory { background: #2c3e2c; color: #88ff88; border-left: 3px solid #44ff44; }
-.msg-error { background: #3e2c2c; color: #ff8888; border-left: 3px solid #ff4444; }
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.msg-system {
+    background: #2c2c3e;
+    color: #ddd;
+    border-left: 3px solid #ffd700;
+}
+
+.msg-combat {
+    background: #3e2c2c;
+    color: #ffaa88;
+    border-left: 3px solid #ff4444;
+}
+
+.msg-victory {
+    background: #2c3e2c;
+    color: #88ff88;
+    border-left: 3px solid #44ff44;
+}
+
+.msg-error {
+    background: #3e2c2c;
+    color: #ff8888;
+    border-left: 3px solid #ff4444;
+}
+
 .buttons-panel {
     padding: 15px;
     background: #1a1a2e;
@@ -62,12 +119,14 @@ body {
     max-height: 200px;
     overflow-y: auto;
 }
+
 .button-grid {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     justify-content: center;
 }
+
 .game-btn {
     background: linear-gradient(135deg, #2c2c3e, #1a1a2e);
     border: 1px solid #ffd700;
@@ -79,10 +138,27 @@ body {
     font-weight: bold;
     transition: all 0.2s;
 }
-.game-btn:hover { background: #ffd700; color: #1a1a2e; transform: scale(1.02); }
-.game-btn:active { transform: scale(0.98); }
-.btn-danger { border-color: #ff4444; color: #ff8888; }
-.btn-warning { border-color: #ffaa44; color: #ffaa44; }
+
+.game-btn:hover {
+    background: #ffd700;
+    color: #1a1a2e;
+    transform: scale(1.02);
+}
+
+.game-btn:active {
+    transform: scale(0.98);
+}
+
+.btn-danger {
+    border-color: #ff4444;
+    color: #ff8888;
+}
+
+.btn-warning {
+    border-color: #ffaa44;
+    color: #ffaa44;
+}
+
 .input-area {
     display: flex;
     padding: 10px;
@@ -90,6 +166,7 @@ body {
     background: #0f0f1a;
     border-top: 1px solid #333;
 }
+
 .game-input {
     flex: 1;
     background: #2c2c3e;
@@ -99,20 +176,25 @@ body {
     color: white;
     font-size: 0.9rem;
 }
-.game-input:focus { outline: none; border-color: #ffaa00; }
 
-/* Стили чата */
+.game-input:focus {
+    outline: none;
+    border-color: #ffaa00;
+}
+
+/* ============ СТИЛИ ЧАТА ============ */
 .chat-window {
     position: fixed;
     bottom: 20px;
     right: 20px;
     width: 320px;
-    background: rgba(0,0,0,0.95);
+    background: rgba(0, 0, 0, 0.95);
     border-radius: 15px;
     border: 1px solid #ffd700;
     z-index: 1000;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
 }
+
 .chat-header {
     padding: 10px;
     background: linear-gradient(135deg, #2c2c3e, #1a1a2e);
@@ -122,28 +204,51 @@ body {
     font-weight: bold;
     font-size: 0.9rem;
 }
+
 .chat-messages {
     height: 250px;
     overflow-y: auto;
     padding: 10px;
     font-size: 0.8rem;
 }
+
 .chat-message {
     margin-bottom: 8px;
     padding: 5px 8px;
     border-radius: 10px;
     word-wrap: break-word;
 }
-.chat-message.player { background: #2c2c3e; color: #ffd700; }
-.chat-message.system { background: #1a1a2e; color: #888; font-style: italic; font-size: 0.7rem; }
-.chat-message .name { color: #ffaa44; font-weight: bold; }
-.chat-message .time { color: #666; font-size: 0.6rem; margin-left: 5px; }
+
+.chat-message.player {
+    background: #2c2c3e;
+    color: #ffd700;
+}
+
+.chat-message.system {
+    background: #1a1a2e;
+    color: #888;
+    font-style: italic;
+    font-size: 0.7rem;
+}
+
+.chat-message .name {
+    color: #ffaa44;
+    font-weight: bold;
+}
+
+.chat-message .time {
+    color: #666;
+    font-size: 0.6rem;
+    margin-left: 5px;
+}
+
 .chat-input-area {
     display: flex;
     padding: 10px;
     gap: 5px;
     border-top: 1px solid #333;
 }
+
 .chat-input {
     flex: 1;
     background: #2c2c3e;
@@ -153,7 +258,12 @@ body {
     color: white;
     font-size: 0.8rem;
 }
-.chat-input:focus { outline: none; border-color: #ffaa00; }
+
+.chat-input:focus {
+    outline: none;
+    border-color: #ffaa00;
+}
+
 .chat-send {
     background: #ffd700;
     border: none;
@@ -162,11 +272,74 @@ body {
     cursor: pointer;
     font-weight: bold;
 }
-.chat-send:hover { background: #ffaa00; }
-.chat-window.collapsed .chat-messages { display: none; }
-.chat-window.collapsed .chat-input-area { display: none; }
-.chat-window.collapsed { height: auto; }
 
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: #1a1a2e; }
-::-webkit-scrollbar-thumb { background: #ffd700; border-radius: 5px; }
+.chat-send:hover {
+    background: #ffaa00;
+}
+
+.chat-window.collapsed .chat-messages {
+    display: none;
+}
+
+.chat-window.collapsed .chat-input-area {
+    display: none;
+}
+
+.chat-window.collapsed {
+    height: auto;
+}
+
+/* ============ СТИЛИ ДОНАТ-СИСТЕМЫ ============ */
+
+/* Кнопка магазина */
+.donate-btn {
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    border: none;
+    padding: 5px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
+    color: #1a1a2e;
+    transition: all 0.2s;
+}
+
+.donate-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+/* Отображение алмазов */
+#diamondsDisplay {
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    color: #1a1a2e;
+    font-weight: bold;
+}
+
+/* Элементы магазина */
+.shop-item {
+    background: #2c2c3e;
+    margin: 10px 0;
+    padding: 15px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.shop-item:hover {
+    transform: scale(1.02);
+    background: #3c3c4e !important;
+}
+
+/* ============ СКРОЛЛБАР ============ */
+::-webkit-scrollbar {
+    width: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1a1a2e;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #ffd700;
+    border-radius: 5px;
+}
