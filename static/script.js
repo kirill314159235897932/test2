@@ -113,7 +113,7 @@ function renderLocationButtons() {
         "Аптека": ["buy_potion", "buy_big_potion", "buy_herbs", "buy_antidote", "stats", "save_game", "delete_save", "Назад"],
         "Магазин ODM": ["buy_gas", "buy_blades", "buy_battery", "buy_repair_kit", "stats", "save_game", "delete_save", "Назад"],
         "Черный рынок": ["buy_artifact", "buy_gem", "buy_treasure_map", "buy_magic_crystal", "stats", "save_game", "delete_save", "Назад"],
-        "Центральная площадь": ["rest", "talk_citizens", "tavern", "daily", "stats", "save_game", "delete_save", "Назад"],
+        "Центральная площадь": ["rest", "talk_citizens", "Таверна", "daily", "stats", "save_game", "delete_save", "Назад"],
         "Таверна": ["play_dice", "gossip", "drink_beer", "stats", "save_game", "delete_save", "Назад"],
         "Госпиталь": ["heal", "buy_medicine", "stats", "save_game", "delete_save", "Назад"],
         "Лаборатория": ["submit_trophies", "study_artifacts", "stats", "save_game", "delete_save", "Назад"],
@@ -134,7 +134,7 @@ function renderLocationButtons() {
         "buy_sword": "🗡️ Купить меч (50g)", "buy_shield": "🛡️ Купить щит (30g)", "buy_bow": "🏹 Купить лук (70g)", "buy_crossbow": "🎯 Купить арбалет (100g)",
         "buy_potion": "🧪 Зелье здоровья (20g)", "buy_big_potion": "⚗️ Большое зелье (40g)", "buy_herbs": "🌿 Лечебные травы (10g)", "buy_antidote": "💊 Антидот (25g)",
         "buy_artifact": "🎖️ Редкий артефакт (200g)", "buy_gem": "💎 Драгоценный камень (150g)", "buy_treasure_map": "📜 Карта сокровищ (100g)", "buy_magic_crystal": "🔮 Магический кристалл (300g)",
-        "rest": "😴 Отдохнуть", "talk_citizens": "🗣️ Поговорить с горожанами", "tavern": "🍺 Таверна", "daily": "🎁 Ежедневная награда",
+        "rest": "😴 Отдохнуть", "talk_citizens": "🗣️ Поговорить с горожанами", "Таверна": "🍺 Таверна", "daily": "🎁 Ежедневная награда",
         "play_dice": "🎲 Сыграть в кости (10g)", "gossip": "🗣️ Узнать сплетни", "drink_beer": "🍺 Выпить эля (5g)",
         "heal": "🏥 Лечиться (10g)", "buy_medicine": "💊 Купить медикаменты",
         "submit_trophies": "🎖️ Сдать трофеи", "study_artifacts": "🔍 Изучить артефакты",
@@ -189,7 +189,9 @@ function renderBattleButtons() {
 }
 
 async function sendAction(action) {
-    // НАВИГАЦИЯ ПО ЛОКАЦИЯМ
+    console.log('📤 sendAction вызван с action:', action);
+    
+    // НАВИГАЦИЯ ПО ЛОКАЦИЯМ (русские названия)
     const locationNames = ["Стена Мария", "Стена Роза", "Стена Сина", "За стеной", "Казармы", "Тренировочная площадка", "Торговый район", "Магазин оружия", "Аптека", "Магазин ODM", "Черный рынок", "Центральная площадь", "Таверна", "Госпиталь", "Лаборатория", "Королевский дворец", "Рынок Сины", "Храм воинов", "Дом Аккерманов", "Боссы"];
     
     if (locationNames.includes(action)) {
@@ -203,9 +205,9 @@ async function sendAction(action) {
     if (action === "Назад") {
         if (currentLocation === "Боссы") currentLocation = "За стеной";
         else if (["Магазин оружия", "Аптека", "Магазин ODM", "Черный рынок"].includes(currentLocation)) currentLocation = "Торговый район";
-        else if (["Таверна"].includes(currentLocation)) currentLocation = "Центральная площадь";
+        else if (currentLocation === "Таверна") currentLocation = "Центральная площадь";
         else if (["Лаборатория", "Королевский дворец", "Рынок Сины", "Храм воинов"].includes(currentLocation)) currentLocation = "Стена Сина";
-        else if (["Госпиталь"].includes(currentLocation)) currentLocation = "Стена Роза";
+        else if (currentLocation === "Госпиталь") currentLocation = "Стена Роза";
         else currentLocation = "Стена Мария";
         
         addMessage(`📍 Возврат в ${currentLocation}`, 'system');
@@ -225,9 +227,11 @@ async function sendAction(action) {
     // Отдых
     if (action === "rest") {
         if (!lastRestTime || Date.now() - lastRestTime > 300000) {
-            player.health = player.max_health;
-            player.energy = player.max_energy;
-            if (player.odm_gear) { player.gas_level = 100; player.blades_count = 6; }
+            if (player) {
+                player.health = player.max_health;
+                player.energy = player.max_energy;
+                if (player.odm_gear) { player.gas_level = 100; player.blades_count = 6; }
+            }
             lastRestTime = Date.now();
             addMessage(`😴 Вы отдохнули! Здоровье и энергия восстановлены.`, 'victory');
             updateStats(); saveGameToLocal();
@@ -241,8 +245,10 @@ async function sendAction(action) {
     // Ежедневная награда
     if (action === "daily") {
         if (!lastDailyTime || Date.now() - lastDailyTime > 86400000) {
-            const reward = Math.floor(Math.random() * 100) + 50;
-            player.gold += reward;
+            if (player) {
+                const reward = Math.floor(Math.random() * 100) + 50;
+                player.gold += reward;
+            }
             lastDailyTime = Date.now();
             addMessage(`🎁 Ежедневная награда! +${reward} золота`, 'victory');
             updateStats(); saveGameToLocal();
@@ -254,7 +260,7 @@ async function sendAction(action) {
     }
     
     // Лечение в госпитале
-    if (action === "heal" && player.gold >= 10) {
+    if (action === "heal" && player && player.gold >= 10) {
         player.gold -= 10;
         player.health = player.max_health;
         addMessage(`🏥 Вылечены! Здоровье: ${player.health}/${player.max_health}`, 'victory');
@@ -270,7 +276,7 @@ async function sendAction(action) {
     }
     
     // Таверна - игра в кости
-    if (action === "play_dice" && player.gold >= 10) {
+    if (action === "play_dice" && player && player.gold >= 10) {
         if (lastDiceTime && Date.now() - lastDiceTime < 5000) {
             addMessage(`⏳ Подождите 5 секунд перед следующей игрой!`, 'error');
             return;
@@ -302,7 +308,7 @@ async function sendAction(action) {
     }
     
     // Выпить эля
-    if (action === "drink_beer" && player.gold >= 5) {
+    if (action === "drink_beer" && player && player.gold >= 5) {
         player.gold -= 5;
         player.energy = Math.min(player.max_energy, player.energy + 10);
         addMessage(`🍺 Вы выпили эль! Энергия +10`, 'victory');
@@ -310,273 +316,7 @@ async function sendAction(action) {
         return;
     }
     
-    // Купить медикаменты
-    if (action === "buy_medicine" && player.gold >= 15) {
-        player.gold -= 15;
-        player.inventory.push("Антидот");
-        addMessage(`💊 Куплены медикаменты (Антидот)!`, 'victory');
-        updateStats(); saveGameToLocal();
-        return;
-    }
-    
-    // Сдать трофеи
-    if (action === "submit_trophies") {
-        const trophies = ["Фрагмент брони Титана", "Часть пара Колосса", "Чешуя дракона", "Редкий артефакт", "Драгоценный камень"];
-        let totalValue = 0;
-        let sold = [];
-        trophies.forEach(trophy => {
-            const count = player.inventory.filter(i => i === trophy).length;
-            if (count > 0) {
-                sold.push(`${trophy} x${count}`);
-                player.inventory = player.inventory.filter(i => i !== trophy);
-                if (trophy === "Фрагмент брони Титана") totalValue += 100 * count;
-                else if (trophy === "Часть пара Колосса") totalValue += 150 * count;
-                else if (trophy === "Чешуя дракона") totalValue += 200 * count;
-                else if (trophy === "Редкий артефакт") totalValue += 50 * count;
-                else if (trophy === "Драгоценный камень") totalValue += 30 * count;
-            }
-        });
-        if (sold.length > 0) {
-            player.gold += totalValue;
-            addMessage(`🔬 Сдано трофеев:\n${sold.join('\n')}\n💰 Получено: ${totalValue} золота!`, 'victory');
-        } else {
-            addMessage(`🔬 У вас нет трофеев для сдачи.`, 'system');
-        }
-        updateStats(); saveGameToLocal();
-        return;
-    }
-    
-    // Изучить артефакты
-    if (action === "study_artifacts") {
-        const hasArtifact = player.inventory.some(i => ["Фрагмент брони Титана", "Часть пара Колосса", "Чешуя дракона", "Редкий артефакт"].includes(i));
-        if (hasArtifact && Math.random() < 0.4) {
-            const bonus = ["Зелье мудрости", "Эссенция титана", "Улучшенное лезвие"][Math.floor(Math.random() * 3)];
-            player.inventory.push(bonus);
-            addMessage(`🔬 Изучение успешно! Получен бонус: ${bonus}`, 'victory');
-        } else if (hasArtifact) {
-            addMessage(`🔬 Изучение не дало результатов.`, 'system');
-        } else {
-            addMessage(`🔬 У вас нет артефактов для изучения.`, 'error');
-        }
-        updateStats(); saveGameToLocal();
-        return;
-    }
-    
-    // Награда за титанов
-    if (action === "get_titan_reward") {
-        const totalKills = Object.values(player.titan_kills || {}).reduce((a, b) => a + b, 0);
-        if (totalKills >= 10) {
-            const reward = Math.floor(totalKills / 10) * 50;
-            player.gold += reward;
-            addMessage(`👑 Королевская награда! За ${totalKills} убитых титанов вы получаете ${reward} золота!`, 'victory');
-        } else {
-            addMessage(`👑 Убито титанов: ${totalKills}/10. Вернитесь после 10 убийств.`, 'system');
-        }
-        updateStats(); saveGameToLocal();
-        return;
-    }
-    
-    // Получить титул
-    if (action === "get_title") {
-        const totalKills = Object.values(player.titan_kills || {}).reduce((a, b) => a + b, 0);
-        if (totalKills >= 50) {
-            player.attack += 5;
-            player.defense += 5;
-            addMessage(`👑 Вы получили титул "Лорд Охотник"! Атака +5, Защита +5`, 'victory');
-        } else if (totalKills >= 25) {
-            player.attack += 3;
-            addMessage(`👑 Вы получили титул "Мастер Охотник"! Атака +3`, 'victory');
-        } else {
-            addMessage(`👑 Для получения титула нужно убить 25+ титанов. У вас: ${totalKills}`, 'system');
-        }
-        updateStats(); saveGameToLocal();
-        return;
-    }
-    
-    // Продать травы
-    if (action === "sell_herbs") {
-        const herbCount = player.inventory.filter(i => i === "Лечебные травы").length;
-        if (herbCount > 0) {
-            player.gold += herbCount * 5;
-            player.inventory = player.inventory.filter(i => i !== "Лечебные травы");
-            addMessage(`💰 Продано трав: ${herbCount} шт. Получено: ${herbCount * 5} золота!`, 'victory');
-        } else {
-            addMessage(`💰 У вас нет лечебных трав для продажи.`, 'error');
-        }
-        updateStats(); saveGameToLocal();
-        return;
-    }
-    
-    // Продать трофеи
-    if (action === "sell_trophies") {
-        const sellable = { "Редкий артефакт": 40, "Драгоценный камень": 25, "Карта сокровищ": 70 };
-        let totalValue = 0;
-        let sold = [];
-        for (const [item, price] of Object.entries(sellable)) {
-            const count = player.inventory.filter(i => i === item).length;
-            if (count > 0) {
-                sold.push(`${item} x${count}`);
-                player.inventory = player.inventory.filter(i => i !== item);
-                totalValue += price * count;
-            }
-        }
-        if (sold.length > 0) {
-            player.gold += totalValue;
-            addMessage(`💰 Продано:\n${sold.join('\n')}\nПолучено: ${totalValue} золота!`, 'victory');
-        } else {
-            addMessage(`💰 У вас нет трофеев для продажи.`, 'error');
-        }
-        updateStats(); saveGameToLocal();
-        return;
-    }
-    
-    // Купить редкие компоненты
-    if (action === "buy_rare_components") {
-        addMessage(`⚗️ РЕДКИЕ КОМПОНЕНТЫ\n\n• Эссенция титана (80g) - Атака +3\n• Кристалл маны (120g) - Энергия +20\n• Порошок феникса (150g) - Здоровье +50\n\nВаше золото: ${player.gold}`, 'system');
-        return;
-    }
-    if (action === "Купить Эссенцию титана" && player.gold >= 80) {
-        player.gold -= 80; player.attack += 3;
-        addMessage(`⚗️ Эссенция титана использована! Атака +3`, 'victory');
-        updateStats(); saveGameToLocal(); return;
-    }
-    if (action === "Купить Кристалл маны" && player.gold >= 120) {
-        player.gold -= 120; player.max_energy += 20; player.energy = player.max_energy;
-        addMessage(`⚗️ Кристалл маны использован! Макс. энергия +20`, 'victory');
-        updateStats(); saveGameToLocal(); return;
-    }
-    if (action === "Купить Порошок феникса" && player.gold >= 150) {
-        player.gold -= 150; player.health = Math.min(player.max_health, player.health + 50);
-        addMessage(`⚗️ Порошок феникса использован! Здоровье +50`, 'victory');
-        updateStats(); saveGameToLocal(); return;
-    }
-    
-    // Благословение
-    if (action === "get_blessing" && player.gold >= 50) {
-        player.gold -= 50;
-        player.attack += Math.floor(Math.random() * 3) + 1;
-        player.defense += Math.floor(Math.random() * 3) + 1;
-        player.agility += Math.floor(Math.random() * 3) + 1;
-        addMessage(`🙏 Благословение получено! Атака, защита и ловкость увеличены!`, 'victory');
-        updateStats(); saveGameToLocal();
-        return;
-    }
-    
-    // Медитация
-    if (action === "meditate") {
-        if (!lastRestTime || Date.now() - lastRestTime > 300000) {
-            player.energy = Math.min(player.max_energy, player.energy + 30);
-            player.health = Math.min(player.max_health, player.health + 20);
-            addMessage(`🧘 Медитация восстановила силы! Энергия +30, Здоровье +20`, 'victory');
-            updateStats(); saveGameToLocal();
-        } else {
-            addMessage(`🧘 Вы уже медитировали недавно.`, 'error');
-        }
-        return;
-    }
-    
-    // Пожертвование
-    if (action === "donate" && player.gold >= 100) {
-        player.gold -= 100;
-        player.max_health += 10;
-        player.health = player.max_health;
-        addMessage(`💰 Пожертвование принято! Макс. здоровье +10`, 'victory');
-        updateStats(); saveGameToLocal();
-        return;
-    }
-    
-    // Взять задание
-    if (action === "Взять задание") {
-        const quests = { "Аномальный титан": { goal: 3, reward: 100 }, "Звероподобный титан": { goal: 2, reward: 150 } };
-        if (!player.quests) player.quests = {};
-        let questGiven = false;
-        for (const [questName, quest] of Object.entries(quests)) {
-            if (!player.quests[questName]) {
-                player.quests[questName] = { goal: quest.goal, progress: 0, reward: quest.reward };
-                addMessage(`📜 Получено новое задание: ${questName}. Цель: убить ${quest.goal}. Награда: ${quest.reward} золота!`, 'victory');
-                questGiven = true;
-                break;
-            }
-        }
-        if (!questGiven) addMessage(`📜 Нет доступных заданий. Выполните текущие.`, 'system');
-        saveGameToLocal();
-        return;
-    }
-    
-    // Микаса
-    if (action === "talk_mikasa") {
-        if (!player.mikasa_relationship) player.mikasa_relationship = 0;
-        const gain = Math.floor(Math.random() * 3) + 1;
-        player.mikasa_relationship = Math.min(100, player.mikasa_relationship + gain);
-        let newLevel = 0;
-        if (player.mikasa_relationship >= 100) newLevel = 5;
-        else if (player.mikasa_relationship >= 80) newLevel = 4;
-        else if (player.mikasa_relationship >= 60) newLevel = 3;
-        else if (player.mikasa_relationship >= 40) newLevel = 2;
-        else if (player.mikasa_relationship >= 20) newLevel = 1;
-        const levelUp = newLevel > (player.mikasa_level || 0);
-        player.mikasa_level = newLevel;
-        addMessage(`💬 Разговор с Микасой. Отношения +${gain} (${player.mikasa_relationship}/100)${levelUp ? ` ⭐ Уровень дружбы ${newLevel}!` : ''}`, 'system');
-        saveGameToLocal();
-        return;
-    }
-    
-    if (action === "mikasa_status") {
-        const levelNames = ["Незнакомец", "Знакомый", "Товарищ", "Друг", "Близкий друг", "Доверенное лицо"];
-        addMessage(`❤️ ОТНОШЕНИЯ С МИКАСОЙ\nУровень: ${levelNames[player.mikasa_level || 0]} (${player.mikasa_level || 0}/5)\nПрогресс: ${player.mikasa_relationship || 0}/100`, 'system');
-        return;
-    }
-    
-    if (action === "invite_mikasa") {
-        if ((player.mikasa_level || 0) < 1) {
-            addMessage(`❌ Микаса не хочет присоединяться. Улучшите отношения (нужен 1+ уровень).`, 'error');
-        } else if (player.has_companion) {
-            addMessage(`👤 Микаса уже в вашей команде!`, 'system');
-        } else {
-            player.has_companion = true;
-            player.companion_name = "Микаса Аккерман";
-            addMessage(`👤 Микаса присоединилась к вашей команде! Она будет помогать в бою.`, 'victory');
-            saveGameToLocal();
-        }
-        return;
-    }
-    
-    if (action === "train_with_mikasa") {
-        if (!player.odm_gear) { addMessage(`❌ Для тренировки с Микасой нужно ODM-снаряжение!`, 'error'); return; }
-        if (player.gas_level < 30 || player.blades_count < 4) { addMessage(`❌ Недостаточно газа или лезвий для тренировки!`, 'error'); return; }
-        player.gas_level -= 30;
-        player.blades_count -= 4;
-        player.energy -= 40;
-        const expGain = Math.floor(Math.random() * 30) + 50;
-        const agilityGain = Math.floor(Math.random() * 4) + 2;
-        player.exp += expGain;
-        player.agility += agilityGain;
-        const relationshipGain = Math.floor(Math.random() * 4) + 3;
-        player.mikasa_relationship = Math.min(100, (player.mikasa_relationship || 0) + relationshipGain);
-        addMessage(`⚔️ Тренировка с Микасой! +${expGain} опыта, ловкость +${agilityGain}, отношения +${relationshipGain}`, 'victory');
-        if (player.exp >= player.max_exp) levelUp();
-        updateStats(); saveGameToLocal();
-        return;
-    }
-    
-    if (action === "give_gift") {
-        const gifts = ["Красный шарф", "Шоколад", "Книга", "Цветы", "Чай"];
-        const availableGifts = gifts.filter(g => player.inventory.includes(g));
-        if (availableGifts.length === 0) {
-            addMessage(`🎁 У вас нет подарков для Микасы. Купите их в магазине или найдите в лесу.`, 'error');
-            return;
-        }
-        const gift = availableGifts[0];
-        const giftValues = { "Красный шарф": 30, "Шоколад": 15, "Книга": 20, "Цветы": 25, "Чай": 10 };
-        const value = giftValues[gift];
-        player.inventory = player.inventory.filter(i => i !== gift);
-        player.mikasa_relationship = Math.min(100, (player.mikasa_relationship || 0) + value);
-        addMessage(`🎁 Вы подарили Микасе ${gift}! Отношения +${value}!`, 'victory');
-        saveGameToLocal();
-        return;
-    }
-    
-    // Если нет сессии
+    // Если нет сессии - отправляем на сервер
     if (!sessionId) {
         addMessage(`❌ Сначала создайте персонажа! Введите имя и нажмите Enter.`, 'error');
         return;
