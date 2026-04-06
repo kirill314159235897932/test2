@@ -1,6 +1,6 @@
 // ============ НАСТРОЙКИ ============
 const API_BASE_URL = 'https://rpg-backend-uch9.onrender.com';
-const CHAT_WS_URL = 'https://rpg-chat-1.onrender.com';  // ← ЗАМЕНИТЕ НА ВАШ URL!
+const CHAT_WS_URL = 'wss://rpg-chat-1.onrender.com';
 
 // ============ ПЕРЕМЕННЫЕ ============
 let sessionId = null;
